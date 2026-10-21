@@ -211,11 +211,11 @@ function renderFab(){
   } else if (S.sel) {
     f.innerHTML = '';
   } else {
-    if (REC.state === 'rec') f.innerHTML = '<button class="big rec" data-act="vocal">' + IC.mic + '<span id="rectime">0:00</span> · relâche pour envoyer</button>';
+    if (REC.state === 'rec') f.innerHTML = '<div style="display:flex;gap:10px;width:100%;max-width:480px"><button class="big ghost" data-act="reccancel" style="width:auto;padding:0 18px">Annuler</button><button class="big rec" data-act="vocal">' + IC.mic + '<span id="rectime">0:00</span> · Envoyer</button></div>';
     else if (REC.state === 'wait') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>Micro…</button>';
     else if (REC.state === 'send') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>Envoi du vocal…</button>';
     else if (REC.denied) f.innerHTML = '<button class="big" data-act="bot">' + IC.mic + 'Vocal dans le bot</button>';
-    else f.innerHTML = '<button class="big" data-act="vocal">' + IC.mic + 'Maintiens pour parler</button>';
+    else f.innerHTML = '<button class="big" data-act="vocal">' + IC.mic + 'Appuie pour parler</button>';
   }
 }
 function render(){
@@ -246,8 +246,10 @@ document.addEventListener('click', function(e){
   if (ds.act === 'reload') { haptic(); load(); return; }
   if (ds.act === 'back') { goBack(); return; }
   if (ds.act === 'vocal') {
+    if (REC.state === 'rec') recRelease(); else if (!REC.state) recStart();
     return;
   }
+  if (ds.act === 'reccancel') { REC.cancel = true; recRelease(); return; }
   if (ds.act === 'bot') {
     if (tg && tg.initData) { try { tg.openTelegramLink('https://t.me/Fhdevis_bot'); } catch (e) {} setTimeout(function(){ try { tg.close(); } catch (e) {} }, 700); }
     else window.location.href = 'https://t.me/Fhdevis_bot';
@@ -277,7 +279,7 @@ document.addEventListener('click', function(e){
   }
 });
 
-// ---- Vocal : maintenir le bouton pour enregistrer, relâcher pour envoyer ----
+// ---- Vocal : appuyer pour enregistrer, appuyer à nouveau pour envoyer ----
 var REC = { state: '', mr: null, chunks: [], start: 0, timer: null, stream: null, held: false, mime: '' };
 function recMime(){
   var L = ['audio/ogg;codecs=opus', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'];
@@ -292,7 +294,6 @@ function recStart(){
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { REC.state = ''; renderFab(); toast('Micro indisponible dans cette version de Telegram'); return; }
   navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
     REC.stream = stream;
-    if (!REC.held) { recStop(); REC.state = ''; renderFab(); toast('Maintiens le bouton pendant que tu parles'); return; }
     REC.mime = recMime();
     var mr; try { mr = REC.mime ? new MediaRecorder(stream, { mimeType: REC.mime }) : new MediaRecorder(stream); } catch (e) { mr = new MediaRecorder(stream); }
     REC.mime = (mr.mimeType || REC.mime || 'audio/webm').split(';')[0];
@@ -313,7 +314,8 @@ function recRelease(){
 function recSend(){
   var dur = (Date.now() - REC.start) / 1000;
   recStop();
-  if (dur < 1.2) { REC.state = ''; renderFab(); toast('Trop court : maintiens le bouton pendant que tu parles'); return; }
+  if (REC.cancel) { REC.cancel = false; REC.state = ''; renderFab(); toast('Vocal annulé'); return; }
+  if (dur < 1.2) { REC.state = ''; renderFab(); toast('Trop court : parle au moins 2 secondes'); return; }
   var blob = new Blob(REC.chunks, { type: REC.mime });
   var fr = new FileReader();
   fr.onload = function(){
@@ -325,8 +327,6 @@ function recSend(){
   };
   fr.readAsDataURL(blob);
 }
-document.addEventListener('pointerdown', function(e){ var b = e.target.closest('[data-act="vocal"]'); if (!b || b.disabled) return; e.preventDefault(); recStart(); });
-['pointerup', 'pointercancel'].forEach(function(t){ document.addEventListener(t, function(){ if (REC.held) recRelease(); }); });
 document.addEventListener('contextmenu', function(e){ var b = e.target.closest('button, a, .card'); if (!b) return; e.preventDefault(); if (b.dataset && b.dataset.act === 'vocal') b.click(); });
 if (tg) {
   try { tg.ready(); tg.expand(); tg.setHeaderColor && tg.setHeaderColor('#0E1116'); tg.setBackgroundColor && tg.setBackgroundColor('#0E1116'); } catch(e){}
