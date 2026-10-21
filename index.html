@@ -211,7 +211,7 @@ function renderFab(){
   } else if (S.sel) {
     f.innerHTML = '';
   } else {
-    if (REC.state === 'rec') f.innerHTML = '<div style="display:flex;gap:10px;width:100%;max-width:480px"><button class="big ghost" data-act="reccancel" style="width:auto;padding:0 18px">Annuler</button><button class="big rec" data-act="vocal">' + IC.mic + '<span id="rectime">0:00</span> · Envoyer</button></div>';
+    if (REC.state === 'rec') f.innerHTML = '<div style="display:flex;gap:10px;width:100%;max-width:480px"><button class="big rec" data-act="vocal">' + IC.mic + '<span id="rectime">0:00</span> · Envoyer</button><button class="big ghost" data-act="reccancel" aria-label="Annuler le vocal" style="width:56px;flex:none;font-size:22px">✕</button></div>';
     else if (REC.state === 'wait') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>Micro…</button>';
     else if (REC.state === 'send') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>Envoi du vocal…</button>';
     else if (REC.denied) f.innerHTML = '<div style="display:flex;gap:10px;width:100%;max-width:480px"><button class="big ghost" data-act="addfile" aria-label="Ajouter un fichier audio ou vidéo" style="width:56px;flex:none;font-size:28px;font-weight:400">+</button><button class="big" data-act="bot">' + IC.mic + 'Vocal dans le bot</button></div>';
@@ -246,10 +246,10 @@ document.addEventListener('click', function(e){
   if (ds.act === 'reload') { haptic(); load(); return; }
   if (ds.act === 'back') { goBack(); return; }
   if (ds.act === 'vocal') {
-    if (REC.state === 'rec') recRelease(); else if (!REC.state) recStart();
+    if (REC.state === 'rec') { if (Date.now() - REC.start > 800) recRelease(); } else if (!REC.state) recStart();
     return;
   }
-  if (ds.act === 'reccancel') { REC.cancel = true; recRelease(); return; }
+  if (ds.act === 'reccancel') { if (Date.now() - REC.start < 800) return; REC.cancel = true; recRelease(); return; }
   if (ds.act === 'addfile') { pickFile(); return; }
   if (ds.act === 'bot') {
     if (tg && tg.initData) { try { tg.openTelegramLink('https://t.me/Fhdevis_bot'); } catch (e) {} setTimeout(function(){ try { tg.close(); } catch (e) {} }, 700); }
@@ -332,10 +332,16 @@ function recSend(){
 var UP = { busy: false };
 function pickFile(){
   if (UP.busy) { toast('Envoi déjà en cours…'); return; }
-  var inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = 'audio/*,video/*'; inp.style.display = 'none';
-  inp.onchange = function(){ var file = inp.files && inp.files[0]; inp.remove(); if (file) sendFile(file); };
-  document.body.appendChild(inp); inp.click();
+  var inp = document.getElementById('fhfile');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.id = 'fhfile'; inp.accept = 'audio/*,video/*';
+    inp.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0';
+    var onPick = function(){ var file = inp.files && inp.files[0]; if (file) { inp.value = ''; sendFile(file); } };
+    inp.addEventListener('change', onPick); inp.addEventListener('input', onPick);
+    document.body.appendChild(inp);
+  }
+  inp.value = ''; inp.click();
 }
 function mediaInfo(file, kind){
   return new Promise(function(res){
