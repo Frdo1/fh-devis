@@ -172,7 +172,7 @@ function seg(items, cur, attr){
 function renderFiche(){
   var k = S.sel.kind, it = S.sel.item, h = '';
   var back = { devis: 'Devis à faire', visites: 'Pré-visite', relances: 'Relance', chantiers: 'Chantier accepté' }[k];
-  h += '<div class="top">' + '<button class="icon-btn" style="color:var(--txt)" data-act="back" aria-label="Retour">' + IC.back + '</button>' + '<span>' + back + '</span></div>';
+  h += '<div class="top">' + '<button class="icon-btn" style="color:var(--txt)" data-act="back" aria-label="Retour">' + IC.back + '</button>' + '<span style="flex:1">' + back + '</span><button class="icon-btn" data-act="addfile" aria-label="Ajouter un fichier audio ou vidéo à cette fiche" style="width:auto;padding:0 14px;gap:6px;color:var(--txt);font-size:14px;font-weight:600"><span style="font-size:22px;line-height:1">+</span>Audio / vidéo</button></div>';
   h += '<div class="sec" style="gap:6px"><div style="display:flex;gap:8px;flex-wrap:wrap">' + firstPill(k, it) + tagPill(metaFor(k, it), '#C9CFD9', '#1F242D') + '</div>';
   h += '<div class="h" style="font-size:28px">' + esc(it.titre) + '</div>';
   if (it.projet) h += '<div class="type" style="font-size:15px">' + esc(it.projet) + '</div>';
@@ -214,8 +214,8 @@ function renderFab(){
     if (REC.state === 'rec') f.innerHTML = '<div style="display:flex;gap:10px;width:100%;max-width:480px"><button class="big ghost" data-act="reccancel" style="width:auto;padding:0 18px">Annuler</button><button class="big rec" data-act="vocal">' + IC.mic + '<span id="rectime">0:00</span> · Envoyer</button></div>';
     else if (REC.state === 'wait') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>Micro…</button>';
     else if (REC.state === 'send') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>Envoi du vocal…</button>';
-    else if (REC.denied) f.innerHTML = '<button class="big" data-act="bot">' + IC.mic + 'Vocal dans le bot</button>';
-    else f.innerHTML = '<button class="big" data-act="vocal">' + IC.mic + 'Appuie pour parler</button>';
+    else if (REC.denied) f.innerHTML = '<div style="display:flex;gap:10px;width:100%;max-width:480px"><button class="big ghost" data-act="addfile" aria-label="Ajouter un fichier audio ou vidéo" style="width:56px;flex:none;font-size:28px;font-weight:400">+</button><button class="big" data-act="bot">' + IC.mic + 'Vocal dans le bot</button></div>';
+    else f.innerHTML = '<div style="display:flex;gap:10px;width:100%;max-width:480px"><button class="big ghost" data-act="addfile" aria-label="Ajouter un fichier audio ou vidéo" style="width:56px;flex:none;font-size:28px;font-weight:400">+</button><button class="big" data-act="vocal">' + IC.mic + 'Appuie pour parler</button></div>';
   }
 }
 function render(){
@@ -250,6 +250,7 @@ document.addEventListener('click', function(e){
     return;
   }
   if (ds.act === 'reccancel') { REC.cancel = true; recRelease(); return; }
+  if (ds.act === 'addfile') { pickFile(); return; }
   if (ds.act === 'bot') {
     if (tg && tg.initData) { try { tg.openTelegramLink('https://t.me/Fhdevis_bot'); } catch (e) {} setTimeout(function(){ try { tg.close(); } catch (e) {} }, 700); }
     else window.location.href = 'https://t.me/Fhdevis_bot';
@@ -326,6 +327,51 @@ function recSend(){
       .catch(function(){ REC.state = ''; renderFab(); toast('❌ Pas de connexion : vocal non envoyé'); });
   };
   fr.readAsDataURL(blob);
+}
+// ---- Fichier audio / vidéo : sur l'accueil = nouvelle note (vidéo = répondeur), dans une fiche = rattaché au client ----
+var UP = { busy: false };
+function pickFile(){
+  if (UP.busy) { toast('Envoi déjà en cours…'); return; }
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'audio/*,video/*'; inp.style.display = 'none';
+  inp.onchange = function(){ var file = inp.files && inp.files[0]; inp.remove(); if (file) sendFile(file); };
+  document.body.appendChild(inp); inp.click();
+}
+function mediaInfo(file, kind){
+  return new Promise(function(res){
+    var el = document.createElement(kind === 'video' ? 'video' : 'audio'); var url = URL.createObjectURL(file); var done = false;
+    var fin = function(o){ if (done) return; done = true; try { URL.revokeObjectURL(url); } catch (e) {} res(o); };
+    el.preload = 'metadata'; el.muted = true;
+    el.onloadedmetadata = function(){ fin({ w: el.videoWidth || 0, h: el.videoHeight || 0, d: Math.round(el.duration || 0) }); };
+    el.onerror = function(){ fin({ w: 0, h: 0, d: 0 }); };
+    setTimeout(function(){ fin({ w: 0, h: 0, d: 0 }); }, 4000);
+    el.src = url;
+  });
+}
+function sendFile(file){
+  var t = String(file.type || ''), n = String(file.name || '').toLowerCase();
+  var kind = /^video\//.test(t) || /\.(mp4|mov|3gp|webm|mkv)$/.test(n) ? 'video' : (/^audio\//.test(t) || /\.(m4a|mp3|ogg|oga|opus|wav|aac|amr|3ga)$/.test(n) ? 'audio' : '');
+  if (!kind) { toast('Choisis un fichier audio ou vidéo'); return; }
+  if (file.size > 19 * 1024 * 1024) { toast('Fichier trop lourd (' + Math.round(file.size / 1048576) + ' Mo, 19 Mo maximum)'); return; }
+  var it = S.sel ? S.sel.item : null;
+  var pageId = it ? (S.sel.kind === 'relances' ? (it.oppId || '') : it.id) : '';
+  UP.busy = true; toast('⏳ Envoi du fichier…');
+  mediaInfo(file, kind).then(function(info){
+    var fd = new FormData();
+    fd.append('initData', (tg && tg.initData) || '');
+    fd.append('kind', kind);
+    fd.append('pageId', pageId);
+    fd.append('titre', it ? it.titre : '');
+    fd.append('w', info.w); fd.append('h', info.h); fd.append('duree', info.d);
+    fd.append('fichier', file, file.name || (kind === 'video' ? 'video.mp4' : 'audio.m4a'));
+    return fetch('https://n8n.srv1029075.hstgr.cloud/webhook/fh-devis-fichier', { method: 'POST', body: fd });
+  }).then(function(r){ return r.json().catch(function(){ return { ok: false, error: r.status === 413 ? 'Fichier trop lourd pour le serveur' : 'Erreur serveur ' + r.status }; }); })
+    .then(function(j){
+      UP.busy = false;
+      if (j.ok) { haptic('ok'); toast(pageId ? '✅ Fichier ajouté à la fiche ' + (it ? it.titre : '') : (kind === 'video' ? '✅ Vidéo envoyée (message de répondeur)' : '✅ Audio envoyé : la fiche arrive dans Telegram')); }
+      else toast('❌ ' + (j.error || 'Échec de l\'envoi'));
+    })
+    .catch(function(){ UP.busy = false; toast('❌ Pas de connexion : fichier non envoyé'); });
 }
 document.addEventListener('contextmenu', function(e){ var b = e.target.closest('button, a, .card'); if (!b) return; e.preventDefault(); if (b.dataset && b.dataset.act === 'vocal') b.click(); });
 if (tg) {
