@@ -240,6 +240,24 @@ function run(action, extra, okMsg, after){
 
 document.addEventListener('click', function(e){
   var b = e.target.closest('button, a'); if (!b) return;
+  // Liens externes : Telegram n'ouvre pas les liens mailto: ni les nouveaux onglets, on passe par openLink
+  if (b.tagName === 'A') {
+    var href = b.getAttribute('href') || '';
+    if (/^mailto:/i.test(href)) {
+      e.preventDefault();
+      var mail = decodeURIComponent(href.slice(7));
+      try { navigator.clipboard && navigator.clipboard.writeText(mail).catch(function(){}); } catch (er) {}
+      var gm = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(mail);
+      if (tg && tg.openLink && tg.initData) tg.openLink(gm); else window.open(gm, '_blank');
+      toast('📧 Adresse copiée · ouverture de Gmail');
+      return;
+    }
+    if (/^https?:/i.test(href) && b.target === '_blank') {
+      e.preventDefault();
+      if (tg && tg.openLink && tg.initData) tg.openLink(href); else window.open(href, '_blank');
+      return;
+    }
+  }
   var ds = b.dataset;
   if (ds.tab) { S.tab = ds.tab; haptic(); render(); return; }
   if (ds.open) { var f = findItem(S.tab, ds.open); if (f) { S.scroll = window.scrollY; S.sel = f; try { history.pushState({ fiche: 1 }, ''); } catch (e) {} haptic(); render(); window.scrollTo(0, 0); } return; }
