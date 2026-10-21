@@ -311,15 +311,19 @@ function recStart(){
   if (REC.state) return;
   REC.held = true; REC.state = 'wait'; renderFab();
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { REC.state = ''; renderFab(); toast('Micro indisponible dans cette version de Telegram'); return; }
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+  navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(function(stream){
     REC.stream = stream;
-    REC.mime = recMime();
-    var mr; try { mr = REC.mime ? new MediaRecorder(stream, { mimeType: REC.mime }) : new MediaRecorder(stream); } catch (e) { mr = new MediaRecorder(stream); }
-    REC.mime = (mr.mimeType || REC.mime || 'audio/webm').split(';')[0];
-    REC.mr = mr; REC.chunks = [];
-    mr.ondataavailable = function(e){ if (e.data && e.data.size) REC.chunks.push(e.data); };
-    mr.onstop = recSend;
-    mr.start(250); REC.start = Date.now(); REC.state = 'rec'; renderFab(); haptic();
+    // Enregistrement en WAV (son brut) : format le plus fiable pour la transcription Gemini
+    var AC = window.AudioContext || window.webkitAudioContext;
+    var ctx = new AC();
+    var src = ctx.createMediaStreamSource(stream);
+    var proc = ctx.createScriptProcessor(4096, 1, 1);
+    REC.pcm = []; REC.rate = ctx.sampleRate; REC.ctx = ctx; REC.src = src; REC.proc = proc;
+    proc.onaudioprocess = function(e){ if (REC.state === 'rec') REC.pcm.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+    src.connect(proc); proc.connect(ctx.destination);
+    if (ctx.state === 'suspended') ctx.resume();
+    REC.mime = 'audio/wav';
+    REC.start = Date.now(); REC.state = 'rec'; renderFab(); haptic();
     REC.timer = setInterval(function(){ var s = Math.floor((Date.now() - REC.start) / 1000); var el = document.getElementById('rectime'); if (el) el.textContent = Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); if (s >= 300) recRelease(); }, 250);
   }).catch(function(err){
     REC.state = ''; REC.denied = (err && err.name) || 'Erreur'; renderFab();
@@ -328,23 +332,49 @@ function recStart(){
 }
 function recRelease(){
   REC.held = false;
-  if (REC.state === 'rec' && REC.mr) { REC.state = 'send'; renderFab(); try { REC.mr.stop(); } catch (e) {} }
+  if (REC.state === 'rec') {
+    REC.state = 'send'; renderFab();
+    try { REC.src.disconnect(); REC.proc.disconnect(); } catch (e) {}
+    try { REC.ctx.close(); } catch (e) {}
+    recSend();
+  }
+}
+function wavFromPcm(chunks, rate){
+  var len = 0; chunks.forEach(function(c){ len += c.length; });
+  var all = new Float32Array(len), o = 0; chunks.forEach(function(c){ all.set(c, o); o += c.length; });
+  var target = 16000, ratio = rate / target, outLen = Math.floor(len / ratio);
+  var out = new Float32Array(outLen), peak = 0;
+  for (var i = 0; i < outLen; i++) {
+    var a = Math.floor(i * ratio), b = Math.min(len, Math.floor((i + 1) * ratio)), sum = 0, n = 0;
+    for (var j = a; j < b; j++) { sum += all[j]; n++; }
+    var v = n ? sum / n : 0; out[i] = v; if (Math.abs(v) > peak) peak = Math.abs(v);
+  }
+  var gain = peak > 0.0001 ? Math.min(8, 0.9 / peak) : 1;
+  var buf = new ArrayBuffer(44 + outLen * 2), dv = new DataView(buf);
+  var w = function(p, str){ for (var k = 0; k < str.length; k++) dv.setUint8(p + k, str.charCodeAt(k)); };
+  w(0, 'RIFF'); dv.setUint32(4, 36 + outLen * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, target, true);
+  dv.setUint32(28, target * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); w(36, 'data'); dv.setUint32(40, outLen * 2, true);
+  for (var x = 0; x < outLen; x++) { var s = Math.max(-1, Math.min(1, out[x] * gain)); dv.setInt16(44 + x * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true); }
+  return { blob: new Blob([buf], { type: 'audio/wav' }), peak: peak };
 }
 function recSend(){
   var dur = (Date.now() - REC.start) / 1000;
   recStop();
   if (REC.cancel) { REC.cancel = false; REC.state = ''; renderFab(); toast('Vocal annulé'); return; }
   if (dur < 1.2) { REC.state = ''; renderFab(); toast('Trop court : parle au moins 2 secondes'); return; }
-  var blob = new Blob(REC.chunks, { type: REC.mime });
+  var res = wavFromPcm(REC.pcm || [], REC.rate || 48000);
+  REC.pcm = [];
+  if (res.peak < 0.003) { REC.state = ''; renderFab(); toast('🔇 Aucun son capté : vérifie le micro et réessaie'); return; }
   var fr = new FileReader();
   fr.onload = function(){
     var b64 = String(fr.result).split(',')[1] || '';
-    fetch('https://n8n.srv1029075.hstgr.cloud/webhook/fh-devis-vocal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: (tg && tg.initData) || '', audio: b64, mime: REC.mime, duree: Math.round(dur) }) })
+    fetch('https://n8n.srv1029075.hstgr.cloud/webhook/fh-devis-vocal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: (tg && tg.initData) || '', audio: b64, mime: 'audio/wav', duree: Math.round(dur) }) })
       .then(function(r){ return r.json().catch(function(){ return { ok: false, error: 'Erreur serveur ' + r.status }; }); })
       .then(function(j){ REC.state = ''; renderFab(); if (j.ok) { haptic('ok'); toast('✅ Vocal envoyé : la fiche arrive dans Telegram'); setTimeout(function(){ load(true); }, 20000); } else toast('❌ ' + (j.error || 'Échec de l\'envoi')); })
       .catch(function(){ REC.state = ''; renderFab(); toast('❌ Pas de connexion : vocal non envoyé'); });
   };
-  fr.readAsDataURL(blob);
+  fr.readAsDataURL(res.blob);
 }
 // ---- Fichier audio / vidéo : sur l'accueil = nouvelle note (vidéo = répondeur), dans une fiche = rattaché au client ----
 var UP = { busy: false };
