@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>FH Devis</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0E1116;--card:#171B22;--line:#262C36;--btn:#1F242D;--btnline:#2A313C;--txt:#F2F4F7;--sub:#C9CFD9;--mut:#9AA3B2;--acc:#F5C518;--red:#FF6B5F;--org:#FFA53D;--grn:#3DD68C;--blu:#4DA3FF}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+button,a,.card,.stat,.tabs,header,.fab,.top,.lbl{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:Inter,system-ui,sans-serif;font-size:15px}
+button{font-family:inherit;cursor:pointer;color:inherit}
+a{color:inherit;text-decoration:none}
+.h{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em}
+#app{max-width:520px;margin:0 auto;min-height:100vh;padding-bottom:110px}
+header{padding:22px 20px 0;display:flex;justify-content:space-between;align-items:flex-start}
+.brand{font-size:12px;font-weight:600;letter-spacing:.12em;color:var(--acc)}
+h1{margin:4px 0 2px;font-size:32px}
+.date{font-size:14px;color:var(--mut)}
+.icon-btn{width:44px;height:44px;border-radius:14px;background:#1C2129;border:1px solid var(--btnline);display:flex;align-items:center;justify-content:center;color:var(--acc)}
+.stats{padding:18px 20px 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 12px;text-align:left}
+.stat b{display:block;font-family:'Space Grotesk',sans-serif;font-size:28px}
+.stat span{font-size:12px;color:var(--mut)}
+.tabs{margin:16px 20px 0;display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px}
+.tabs button{flex:1;height:44px;border:none;border-radius:12px;font-size:13px;font-weight:600;background:transparent;color:var(--mut);position:relative}
+.tabs button.on{background:#2A313C;color:var(--txt)}
+.tabs i{font-style:normal;font-size:11px;margin-left:3px;opacity:.8}
+.list{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px;text-align:left;width:100%}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill .d{width:7px;height:7px;border-radius:50%}
+.meta{font-size:13px;color:var(--mut);text-align:right}
+.name{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700}
+.type{font-size:14px;color:var(--sub)}
+.loc{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mut)}
+.empty{padding:40px 20px;text-align:center;color:var(--mut);font-size:14px;line-height:1.5}
+.fab{position:fixed;left:0;right:0;bottom:0;padding:16px 20px calc(20px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(14,17,22,0) 0%,var(--bg) 40%);display:flex;justify-content:center}
+.big{width:100%;max-width:480px;height:56px;border:none;border-radius:18px;background:var(--acc);color:#111318;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px}
+.big.ghost{background:var(--btn);border:1px solid var(--btnline);color:var(--txt)}
+.big.ok{background:rgba(61,214,140,.16);border:1px solid rgba(61,214,140,.5);color:var(--grn)}
+.big:disabled{opacity:.5}
+.big.rec{background:#FF6B5F;color:#111318;box-shadow:0 0 0 8px rgba(255,107,95,.18)}
+.big[data-act="vocal"]{touch-action:none}
+/* fiche */
+.top{padding:20px 20px 0;display:flex;align-items:center;gap:12px;color:var(--mut);font-size:14px}
+.sec{padding:16px 20px 0;display:flex;flex-direction:column;gap:8px}
+.lbl{font-size:12px;font-weight:600;letter-spacing:.1em;color:var(--mut)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:4px 16px}
+.line{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:15px;min-height:48px}
+.line:last-child{border-bottom:none}
+.line svg{flex:none;color:var(--mut)}
+.notes{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;font-size:15px;line-height:1.5;color:#DDE2EA;white-space:pre-wrap}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;min-height:46px;border-radius:12px;font-size:14px;font-weight:600;background:var(--card);border:1px solid var(--line);color:var(--mut);padding:6px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.act{min-height:52px;border-radius:14px;background:var(--btn);border:1px solid var(--btnline);font-size:14px;font-weight:600;padding:6px 10px}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:#2A313C;color:var(--txt);padding:12px 16px;border-radius:14px;font-size:14px;max-width:88%;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:9;transition:opacity .3s}
+.skel{height:130px;border-radius:22px;background:linear-gradient(90deg,#171B22 0%,#1d222b 50%,#171B22 100%);background-size:200% 100%;animation:sk 1.2s infinite}
+@keyframes sk{to{background-position:-200% 0}}
+.err{margin:30px 20px;padding:18px;border-radius:18px;background:rgba(255,107,95,.1);border:1px solid rgba(255,107,95,.4);color:#FFB3AC;font-size:14px;line-height:1.5}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="fab" class="fab"></div>
+<script>
+(function(){
+var tg = window.Telegram && window.Telegram.WebApp;
+var API = 'https://n8n.srv1029075.hstgr.cloud/webhook/fh-devis-api';
+var S = { tab: 'devis', data: null, sel: null, busy: false, error: '' };
+var PRIO = {
+  U: { label: 'Urgent', c: '#FF6B5F', bg: 'rgba(255,107,95,.14)' },
+  N: { label: 'Normal', c: '#FFA53D', bg: 'rgba(255,165,61,.14)' },
+  P: { label: 'Pas pressé', c: '#3DD68C', bg: 'rgba(61,214,140,.14)' },
+  '': { label: 'Sans urgence', c: '#9AA3B2', bg: '#1F242D' }
+};
+var IC = {
+  pin: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+  pin18: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+  tel: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>',
+  mail: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  cal: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+  back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
+  refresh: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>',
+  mic: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg>'
+};
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
+function frDate(iso, opts){ if(!iso) return ''; var d = new Date(iso.length > 10 ? iso : iso + 'T12:00:00'); return d.toLocaleDateString('fr-FR', opts || { weekday:'short', day:'numeric', month:'short' }); }
+function haptic(t){ try { tg && tg.HapticFeedback && (t === 'ok' ? tg.HapticFeedback.notificationOccurred('success') : tg.HapticFeedback.impactOccurred('light')); } catch(e){} }
+function toast(msg){ var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(function(){ t.style.opacity = '0'; setTimeout(function(){ t.remove(); }, 300); }, 2600); }
+function confirmBox(msg, cb){ if (tg && tg.showConfirm && tg.initData) tg.showConfirm(msg, cb); else cb(window.confirm(msg)); }
+
+function api(action, extra){
+  var body = Object.assign({ action: action, initData: (tg && tg.initData) || '' }, extra || {});
+  return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function(r){ return r.text().then(function(t){ var j; try { j = JSON.parse(t); } catch(e){ j = { ok:false, error: 'Réponse illisible du serveur (' + r.status + ')' }; } if (!r.ok && j.ok !== false) j = { ok:false, error: 'Erreur serveur ' + r.status }; return j; }); });
+}
+function load(silent){
+  if (!silent){ S.data = null; S.error = ''; render(); }
+  return api('data').then(function(j){
+    if (!j.ok) { S.error = j.error || 'Accès refusé'; S.data = null; }
+    else { S.data = j; S.error = ''; if (S.sel){ S.sel = findItem(S.sel.kind, S.sel.item.id) ; } }
+    render();
+  }).catch(function(){ S.error = 'Pas de connexion au serveur n8n.'; render(); });
+}
+function findItem(kind, id){ var arr = (S.data && S.data[kind]) || []; for (var i=0;i<arr.length;i++) if (arr[i].id === id) return { kind: kind, item: arr[i] }; return null; }
+
+function pill(u){ var p = PRIO[u || ''] || PRIO['']; return '<span class="pill" style="color:'+p.c+';background:'+p.bg+'"><span class="d" style="background:'+p.c+'"></span>'+p.label+'</span>'; }
+function tagPill(txt, c, bg){ return '<span class="pill" style="color:'+c+';background:'+bg+'">'+esc(txt)+'</span>'; }
+
+var TABS = [
+  { id: 'devis', label: 'À faire' },
+  { id: 'visites', label: 'Visites' },
+  { id: 'relances', label: 'Relances' },
+  { id: 'chantiers', label: 'Chantiers' }
+];
+function metaFor(kind, it){
+  var t = S.data.today;
+  if (kind === 'devis') { if (!it.pour) return 'Sans date'; return (it.pour < t ? '⚠ ' : '') + 'Pour ' + frDate(it.pour); }
+  if (kind === 'visites') return it.rdv ? 'RDV ' + frDate(it.rdv, it.rdv.length > 10 ? { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' } : undefined) : 'RDV à fixer';
+  if (kind === 'relances') return 'Envoyé il y a ' + it.days + ' j';
+  if (kind === 'chantiers') return it.depuis ? 'Accepté ' + frDate(it.depuis) : '';
+  return '';
+}
+function firstPill(kind, it){
+  if (kind === 'visites') return it.etat === 'Visite programmée' ? tagPill('Programmée', '#4DA3FF', 'rgba(77,163,255,.14)') : tagPill(it.etat === 'Contact Entrant' ? 'Nouveau contact' : 'À programmer', '#C9CFD9', '#1F242D');
+  if (kind === 'relances') return it.statut === 'En pause' ? tagPill('En pause', '#C9CFD9', '#1F242D') : pill(it.urgence);
+  if (kind === 'chantiers') return tagPill('Accepté', '#3DD68C', 'rgba(61,214,140,.14)');
+  return pill(it.urgence);
+}
+
+function renderHome(){
+  var d = S.data, h = '';
+  var today = frDate(new Date().toISOString().slice(0,10), { weekday:'long', day:'numeric', month:'long' });
+  h += '<header><div><div class="brand">FH ELEC</div><h1 class="h">Mes devis</h1><div class="date">' + esc(today.charAt(0).toUpperCase() + today.slice(1)) + '</div></div>';
+  h += '<button class="icon-btn" data-act="reload" aria-label="Actualiser">' + IC.refresh + '</button></header>';
+  if (S.error) {
+    h += '<div class="err"><b>Impossible de charger tes devis.</b><br>' + esc(S.error) + (tg && tg.initData ? '' : '<br><br>Ouvre l\'appli depuis le bouton du bot Telegram.') + '</div>';
+    return h;
+  }
+  if (!d) { h += '<div class="list" style="padding-top:18px"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>'; return h; }
+  var urg = d.devis.filter(function(x){ return x.urgence === 'U'; }).length;
+  h += '<div class="stats">';
+  h += '<button class="stat" data-tab="devis"><b>' + d.devis.length + '</b><span>à réaliser</span></button>';
+  h += '<button class="stat" data-tab="devis"><b style="color:var(--red)">' + urg + '</b><span>urgents</span></button>';
+  h += '<button class="stat" data-tab="relances"><b style="color:var(--acc)">' + d.relances.length + '</b><span>relances</span></button>';
+  h += '</div><div class="tabs">';
+  TABS.forEach(function(t){ h += '<button class="' + (S.tab === t.id ? 'on' : '') + '" data-tab="' + t.id + '">' + t.label + '<i>' + (d[t.id] || []).length + '</i></button>'; });
+  h += '</div><div class="list">';
+  var items = d[S.tab] || [];
+  if (!items.length) h += '<div class="empty">' + { devis: 'Aucun devis à faire. 👍', visites: 'Aucune pré-visite en attente.', relances: 'Aucun devis en attente de réponse.', chantiers: 'Aucun chantier accepté à planifier.' }[S.tab] + '</div>';
+  items.forEach(function(it){
+    h += '<button class="card" data-open="' + esc(it.id) + '">';
+    h += '<div class="row">' + firstPill(S.tab, it) + '<span class="meta">' + esc(metaFor(S.tab, it)) + '</span></div>';
+    h += '<div><div class="name">' + esc(it.titre) + '</div>';
+    if (it.projet) h += '<div class="type">' + esc(it.projet) + '</div>';
+    if (it.ville) h += '<div class="loc">' + IC.pin + '<span>' + esc(it.ville) + '</span></div>';
+    h += '</div></button>';
+  });
+  h += '</div>';
+  return h;
+}
+
+function seg(items, cur, attr){
+  return '<div class="seg">' + items.map(function(o){ var on = o.v === cur; var p = PRIO[o.v] || {}; return '<button data-' + attr + '="' + o.v + '" style="' + (on ? 'background:' + (p.bg || '#2A313C') + ';border-color:' + (p.c || 'var(--acc)') + ';color:' + (p.c || 'var(--acc)') : '') + '">' + o.l + '</button>'; }).join('') + '</div>';
+}
+function renderFiche(){
+  var k = S.sel.kind, it = S.sel.item, h = '';
+  var back = { devis: 'Devis à faire', visites: 'Pré-visite', relances: 'Relance', chantiers: 'Chantier accepté' }[k];
+  h += '<div class="top">' + '<button class="icon-btn" style="color:var(--txt)" data-act="back" aria-label="Retour">' + IC.back + '</button>' + '<span>' + back + '</span></div>';
+  h += '<div class="sec" style="gap:6px"><div style="display:flex;gap:8px;flex-wrap:wrap">' + firstPill(k, it) + tagPill(metaFor(k, it), '#C9CFD9', '#1F242D') + '</div>';
+  h += '<div class="h" style="font-size:28px">' + esc(it.titre) + '</div>';
+  if (it.projet) h += '<div class="type" style="font-size:15px">' + esc(it.projet) + '</div>';
+  if (k === 'relances' && it.num) h += '<div class="type">Devis n° ' + esc(it.num) + (it.devisTitre ? ' · ' + esc(it.devisTitre) : '') + '</div>';
+  h += '</div>';
+  var lines = '';
+  if (it.tel) lines += '<a class="line" href="tel:' + esc(it.tel.replace(/\s/g, '')) + '">' + IC.tel + '<span>' + esc(it.tel) + '</span></a>';
+  if (it.adresse) lines += '<a class="line" target="_blank" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(it.adresse) + '">' + IC.pin18 + '<span>' + esc(it.adresse) + '</span></a>';
+  if (it.email) lines += '<a class="line" href="mailto:' + esc(it.email) + '">' + IC.mail + '<span style="word-break:break-all">' + esc(it.email) + '</span></a>';
+  if (lines) h += '<div class="sec"><div class="box">' + lines + '</div></div>';
+  if (it.notes) h += '<div class="sec"><div class="lbl">' + (k === 'visites' ? 'CE QUE LE CLIENT A DIT' : 'NOTES DE VISITE') + '</div><div class="notes">' + esc(it.notes) + '</div></div>';
+  if (it.fichiers) h += '<div class="sec"><div class="lbl">PHOTOS ET FICHIERS</div><div class="type">' + it.fichiers + ' fichier' + (it.fichiers > 1 ? 's' : '') + ' sur la fiche Notion</div></div>';
+  if (k === 'devis' || k === 'visites') {
+    h += '<div class="sec"><div class="lbl">PRIORITÉ</div>' + seg([{ v:'U', l:'Urgent' }, { v:'N', l:'Normal' }, { v:'P', l:'Pas pressé' }], it.urgence, 'urg') + '</div>';
+  }
+  if (k === 'visites') {
+    h += '<div class="sec"><div class="lbl">VISITE FAITE → DEVIS POUR</div><div class="grid2">';
+    h += '<button class="act" data-vf="D">Demain</button><button class="act" data-vf="V">Vendredi</button><button class="act" data-vf="S">Semaine pro</button><button class="act" data-vf="X" style="color:var(--red)">Pas de suite</button>';
+    h += '</div></div>';
+  }
+  if (k === 'relances') {
+    h += '<div class="sec"><div class="lbl">RÉPONSE DU CLIENT</div><div class="grid2">';
+    h += '<button class="act" data-rd="A" style="color:var(--grn)">Accepté</button><button class="act" data-rd="R" style="color:var(--red)">Refusé</button><button class="act" data-rd="W">Il réfléchit</button><button class="act" data-rd="C">À rappeler</button>';
+    h += '</div></div>';
+  }
+  if (it.url) h += '<div class="sec"><a class="act" style="display:flex;align-items:center;justify-content:center" href="' + esc(it.url) + '" target="_blank">Ouvrir la fiche Notion</a></div>';
+  return h;
+}
+
+function renderFab(){
+  var f = document.getElementById('fab');
+  if (S.sel && S.sel.kind === 'devis') {
+    f.innerHTML = '<button class="big" data-act="done"' + (S.busy ? ' disabled' : '') + '>' + (S.busy ? 'Envoi…' : 'Marquer le devis comme fait') + '</button>';
+  } else if (S.sel && (S.sel.kind === 'chantiers' || S.sel.kind === 'relances') && S.sel.item.tel) {
+    f.innerHTML = '<a class="big" href="tel:' + esc(S.sel.item.tel.replace(/\s/g, '')) + '">' + IC.tel + (S.sel.kind === 'chantiers' ? 'Appeler pour caler la date' : 'Appeler le client') + '</a>';
+  } else if (S.sel) {
+    f.innerHTML = '';
+  } else {
+    if (REC.state === 'rec') f.innerHTML = '<button class="big rec" data-act="vocal">' + IC.mic + '<span id="rectime">0:00</span> · relâche pour envoyer</button>';
+    else if (REC.state === 'wait') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>Micro…</button>';
+    else if (REC.state === 'send') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>Envoi du vocal…</button>';
+    else if (REC.denied) f.innerHTML = '<button class="big" data-act="bot">' + IC.mic + 'Vocal dans le bot</button>';
+    else f.innerHTML = '<button class="big" data-act="vocal">' + IC.mic + 'Maintiens pour parler</button>';
+  }
+}
+function render(){
+  document.getElementById('app').innerHTML = S.sel ? renderFiche() : renderHome();
+  renderFab();
+  if (tg && tg.BackButton && tg.initData) { if (S.sel) tg.BackButton.show(); else tg.BackButton.hide(); }
+}
+function closeFiche(){ if (!S.sel) return; S.sel = null; render(); window.scrollTo(0, S.scroll || 0); }
+function goBack(){ if (!S.sel) return; if (history.state && history.state.fiche) history.back(); else closeFiche(); }
+window.addEventListener('popstate', function(){ closeFiche(); });
+
+function run(action, extra, okMsg, after){
+  if (S.busy) return; S.busy = true; render();
+  api(action, extra).then(function(j){
+    S.busy = false;
+    if (!j.ok) { toast('❌ ' + (j.error || 'Échec')); render(); return; }
+    haptic('ok'); toast(j.message || okMsg);
+    if (after) after(j);
+    load(true);
+  }).catch(function(){ S.busy = false; toast('❌ Pas de connexion'); render(); });
+}
+
+document.addEventListener('click', function(e){
+  var b = e.target.closest('button, a'); if (!b) return;
+  var ds = b.dataset;
+  if (ds.tab) { S.tab = ds.tab; haptic(); render(); return; }
+  if (ds.open) { var f = findItem(S.tab, ds.open); if (f) { S.scroll = window.scrollY; S.sel = f; try { history.pushState({ fiche: 1 }, ''); } catch (e) {} haptic(); render(); window.scrollTo(0, 0); } return; }
+  if (ds.act === 'reload') { haptic(); load(); return; }
+  if (ds.act === 'back') { goBack(); return; }
+  if (ds.act === 'vocal') {
+    return;
+  }
+  if (ds.act === 'bot') {
+    if (tg && tg.initData) { try { tg.openTelegramLink('https://t.me/Fhdevis_bot'); } catch (e) {} setTimeout(function(){ try { tg.close(); } catch (e) {} }, 700); }
+    else window.location.href = 'https://t.me/Fhdevis_bot';
+    return;
+  }
+  if (!S.sel) return;
+  var it = S.sel.item;
+  if (ds.act === 'done') {
+    confirmBox('Devis fait pour ' + it.titre + ' ?', function(ok){ if (ok) run('done', { pageId: it.id }, '✅ Devis fait', function(){ goBack(); }); });
+    return;
+  }
+  if (ds.urg) {
+    if (ds.urg === it.urgence) return;
+    it.urgence = ds.urg; render();
+    run('urg', { pageId: it.id, level: ds.urg }, 'Priorité : ' + PRIO[ds.urg].label);
+    return;
+  }
+  if (ds.vf) {
+    var lbl = { D: 'devis pour demain', V: 'devis pour vendredi', S: 'devis la semaine prochaine', X: 'PAS DE SUITE (contact perdu)' }[ds.vf];
+    confirmBox('Visite faite chez ' + it.titre + ' : ' + lbl + ' ?', function(ok){ if (ok) run('visite', { pageId: it.id, value: ds.vf }, ds.vf === 'X' ? 'Fiche fermée' : '📋 Passée en devis à faire', function(){ goBack(); }); });
+    return;
+  }
+  if (ds.rd) {
+    var l2 = { A: 'ACCEPTÉ', R: 'REFUSÉ', W: 'il réfléchit (relances dans 14 j)', C: 'à rappeler (rappel agenda demain)' }[ds.rd];
+    confirmBox('Devis ' + (it.num || '') + ' – ' + it.titre + ' : ' + l2 + ' ?', function(ok){ if (ok) run('rd', { devisId: it.id, value: ds.rd }, 'Réponse enregistrée', function(){ goBack(); }); });
+    return;
+  }
+});
+
+// ---- Vocal : maintenir le bouton pour enregistrer, relâcher pour envoyer ----
+var REC = { state: '', mr: null, chunks: [], start: 0, timer: null, stream: null, held: false, mime: '' };
+function recMime(){
+  var L = ['audio/ogg;codecs=opus', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'];
+  if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return '';
+  for (var i = 0; i < L.length; i++) if (MediaRecorder.isTypeSupported(L[i])) return L[i];
+  return '';
+}
+function recStop(){ try { REC.stream && REC.stream.getTracks().forEach(function(t){ t.stop(); }); } catch (e) {} REC.stream = null; clearInterval(REC.timer); }
+function recStart(){
+  if (REC.state) return;
+  REC.held = true; REC.state = 'wait'; renderFab();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { REC.state = ''; renderFab(); toast('Micro indisponible dans cette version de Telegram'); return; }
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+    REC.stream = stream;
+    if (!REC.held) { recStop(); REC.state = ''; renderFab(); toast('Maintiens le bouton pendant que tu parles'); return; }
+    REC.mime = recMime();
+    var mr; try { mr = REC.mime ? new MediaRecorder(stream, { mimeType: REC.mime }) : new MediaRecorder(stream); } catch (e) { mr = new MediaRecorder(stream); }
+    REC.mime = (mr.mimeType || REC.mime || 'audio/webm').split(';')[0];
+    REC.mr = mr; REC.chunks = [];
+    mr.ondataavailable = function(e){ if (e.data && e.data.size) REC.chunks.push(e.data); };
+    mr.onstop = recSend;
+    mr.start(250); REC.start = Date.now(); REC.state = 'rec'; renderFab(); haptic();
+    REC.timer = setInterval(function(){ var s = Math.floor((Date.now() - REC.start) / 1000); var el = document.getElementById('rectime'); if (el) el.textContent = Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); if (s >= 300) recRelease(); }, 250);
+  }).catch(function(err){
+    REC.state = ''; REC.denied = (err && err.name) || 'Erreur'; renderFab();
+    toast('Telegram bloque le micro dans l\'appli (' + REC.denied + ') : appuie sur le bouton pour envoyer ton vocal au bot');
+  });
+}
+function recRelease(){
+  REC.held = false;
+  if (REC.state === 'rec' && REC.mr) { REC.state = 'send'; renderFab(); try { REC.mr.stop(); } catch (e) {} }
+}
+function recSend(){
+  var dur = (Date.now() - REC.start) / 1000;
+  recStop();
+  if (dur < 1.2) { REC.state = ''; renderFab(); toast('Trop court : maintiens le bouton pendant que tu parles'); return; }
+  var blob = new Blob(REC.chunks, { type: REC.mime });
+  var fr = new FileReader();
+  fr.onload = function(){
+    var b64 = String(fr.result).split(',')[1] || '';
+    fetch('https://n8n.srv1029075.hstgr.cloud/webhook/fh-devis-vocal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: (tg && tg.initData) || '', audio: b64, mime: REC.mime, duree: Math.round(dur) }) })
+      .then(function(r){ return r.json().catch(function(){ return { ok: false, error: 'Erreur serveur ' + r.status }; }); })
+      .then(function(j){ REC.state = ''; renderFab(); if (j.ok) { haptic('ok'); toast('✅ Vocal envoyé : la fiche arrive dans Telegram'); setTimeout(function(){ load(true); }, 20000); } else toast('❌ ' + (j.error || 'Échec de l\'envoi')); })
+      .catch(function(){ REC.state = ''; renderFab(); toast('❌ Pas de connexion : vocal non envoyé'); });
+  };
+  fr.readAsDataURL(blob);
+}
+document.addEventListener('pointerdown', function(e){ var b = e.target.closest('[data-act="vocal"]'); if (!b || b.disabled) return; e.preventDefault(); recStart(); });
+['pointerup', 'pointercancel'].forEach(function(t){ document.addEventListener(t, function(){ if (REC.held) recRelease(); }); });
+document.addEventListener('contextmenu', function(e){ var b = e.target.closest('button, a, .card'); if (!b) return; e.preventDefault(); if (b.dataset && b.dataset.act === 'vocal') b.click(); });
+if (tg) {
+  try { tg.ready(); tg.expand(); tg.setHeaderColor && tg.setHeaderColor('#0E1116'); tg.setBackgroundColor && tg.setBackgroundColor('#0E1116'); } catch(e){}
+  if (tg.BackButton) tg.BackButton.onClick(goBack);
+}
+render();
+load();
+})();
+</script>
+</body>
+</html>
