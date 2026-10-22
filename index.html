@@ -248,9 +248,10 @@ document.addEventListener('click', function(e){
       e.preventDefault();
       var mail = decodeURIComponent(href.slice(7));
       try { navigator.clipboard && navigator.clipboard.writeText(mail).catch(function(){}); } catch (er) {}
-      var gm = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(mail);
-      if (tg && tg.openLink && tg.initData) tg.openLink(gm); else window.open(gm, '_blank');
-      toast('📧 Adresse copiée · ouverture de Gmail');
+      // Page relais (même site) qui ouvre un mailto: → Gmail s'ouvre directement sur un nouveau mail, adresse remplie
+      var gm = new URL('mail.html?to=' + encodeURIComponent(mail), location.href).href;
+      if (tg && tg.openLink && tg.initData) tg.openLink(gm); else window.location.href = href;
+      toast('📧 Ouverture d’un nouveau mail');
       return;
     }
     if (/^https?:/i.test(href) && b.target === '_blank') {
