@@ -204,17 +204,18 @@ function renderFiche(){
 
 function renderFab(){
   var f = document.getElementById('fab');
-  if (S.sel && S.sel.kind === 'devis') {
-    f.innerHTML = '<button class="big" data-act="done"' + (S.busy ? ' disabled' : '') + '>' + (S.busy ? 'Envoi…' : 'Marquer le devis comme fait') + '</button>';
-  } else if (S.sel && (S.sel.kind === 'chantiers' || S.sel.kind === 'relances') && S.sel.item.tel) {
-    f.innerHTML = '<a class="big" href="tel:' + esc(S.sel.item.tel.replace(/\s/g, '')) + '">' + IC.tel + (S.sel.kind === 'chantiers' ? 'Appeler pour caler la date' : 'Appeler le client') + '</a>';
-  } else if (S.sel) {
-    f.innerHTML = '';
+  var row = function(x){ return '<div style="display:flex;gap:10px;width:100%;max-width:480px">' + x + '</div>'; };
+  if (REC.state === 'rec') f.innerHTML = row('<button class="big rec" data-act="vocal">' + IC.mic + '<span id="rectime">0:00</span> · ' + (REC.target ? 'Ajouter la note' : 'Envoyer') + '</button><button class="big ghost" data-act="reccancel" aria-label="Annuler le vocal" style="width:56px;flex:none;font-size:22px">✕</button>');
+  else if (REC.state === 'wait') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>Micro…</button>';
+  else if (REC.state === 'send') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>' + (REC.target ? 'Envoi de la note…' : 'Envoi du vocal…') + '</button>';
+  else if (S.sel) {
+    // Fiche client : bouton micro pour dicter une note rattachée directement à ce client
+    var mic = '<button class="big ghost" data-act="vocal" aria-label="Dicter une note pour ce client" style="width:56px;flex:none">' + IC.mic + '</button>';
+    if (S.sel.kind === 'devis') f.innerHTML = row(mic + '<button class="big" data-act="done"' + (S.busy ? ' disabled' : '') + '>' + (S.busy ? 'Envoi…' : 'Marquer le devis comme fait') + '</button>');
+    else if ((S.sel.kind === 'chantiers' || S.sel.kind === 'relances') && S.sel.item.tel) f.innerHTML = row(mic + '<a class="big" href="tel:' + esc(S.sel.item.tel.replace(/\s/g, '')) + '">' + IC.tel + (S.sel.kind === 'chantiers' ? 'Appeler pour caler la date' : 'Appeler le client') + '</a>');
+    else f.innerHTML = '<button class="big" data-act="vocal">' + IC.mic + 'Dicter une note</button>';
   } else {
-    if (REC.state === 'rec') f.innerHTML = '<div style="display:flex;gap:10px;width:100%;max-width:480px"><button class="big rec" data-act="vocal">' + IC.mic + '<span id="rectime">0:00</span> · Envoyer</button><button class="big ghost" data-act="reccancel" aria-label="Annuler le vocal" style="width:56px;flex:none;font-size:22px">✕</button></div>';
-    else if (REC.state === 'wait') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>Micro…</button>';
-    else if (REC.state === 'send') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>Envoi du vocal…</button>';
-    else if (REC.denied) f.innerHTML = '<div style="display:flex;gap:10px;width:100%;max-width:480px"><button class="big ghost" data-act="addfile" aria-label="Ajouter un fichier audio ou vidéo" style="width:56px;flex:none;font-size:28px;font-weight:400">+</button><button class="big" data-act="bot">' + IC.mic + 'Vocal dans le bot</button></div>';
+    if (REC.denied) f.innerHTML = '<div style="display:flex;gap:10px;width:100%;max-width:480px"><button class="big ghost" data-act="addfile" aria-label="Ajouter un fichier audio ou vidéo" style="width:56px;flex:none;font-size:28px;font-weight:400">+</button><button class="big" data-act="bot">' + IC.mic + 'Vocal dans le bot</button></div>';
     else f.innerHTML = '<div style="display:flex;gap:10px;width:100%;max-width:480px"><button class="big ghost" data-act="addfile" aria-label="Ajouter un fichier audio ou vidéo" style="width:56px;flex:none;font-size:28px;font-weight:400">+</button><button class="big" data-act="vocal">' + IC.mic + 'Appuie pour parler</button></div>';
   }
 }
@@ -309,6 +310,9 @@ function recMime(){
 function recStop(){ try { REC.stream && REC.stream.getTracks().forEach(function(t){ t.stop(); }); } catch (e) {} REC.stream = null; clearInterval(REC.timer); }
 function recStart(){
   if (REC.state) return;
+  // Dans une fiche, le vocal est une note pour ce client précis
+  REC.target = S.sel ? { pageId: S.sel.kind === 'relances' ? (S.sel.item.oppId || '') : S.sel.item.id, titre: S.sel.item.titre || '', kind: S.sel.kind } : null;
+  if (REC.target && !REC.target.pageId) REC.target = null;
   REC.held = true; REC.state = 'wait'; renderFab();
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { REC.state = ''; renderFab(); toast('Micro indisponible dans cette version de Telegram'); return; }
   navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(function(stream){
@@ -367,12 +371,15 @@ function recSend(){
   REC.pcm = [];
   if (res.peak < 0.003) { REC.state = ''; renderFab(); toast('🔇 Aucun son capté : vérifie le micro et réessaie'); return; }
   var fr = new FileReader();
+  var tgt = REC.target;
   fr.onload = function(){
     var b64 = String(fr.result).split(',')[1] || '';
-    fetch('https://n8n.srv1029075.hstgr.cloud/webhook/fh-devis-vocal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: (tg && tg.initData) || '', audio: b64, mime: 'audio/wav', duree: Math.round(dur) }) })
+    var body = { initData: (tg && tg.initData) || '', audio: b64, mime: 'audio/wav', duree: Math.round(dur) };
+    if (tgt) { body.mode = 'note'; body.pageId = tgt.pageId; body.titre = tgt.titre; body.kind = tgt.kind; }
+    fetch('https://n8n.srv1029075.hstgr.cloud/webhook/fh-devis-vocal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function(r){ return r.json().catch(function(){ return { ok: false, error: 'Erreur serveur ' + r.status }; }); })
-      .then(function(j){ REC.state = ''; renderFab(); if (j.ok) { haptic('ok'); toast('✅ Vocal envoyé : la fiche arrive dans Telegram'); setTimeout(function(){ load(true); }, 20000); } else toast('❌ ' + (j.error || 'Échec de l\'envoi')); })
-      .catch(function(){ REC.state = ''; renderFab(); toast('❌ Pas de connexion : vocal non envoyé'); });
+      .then(function(j){ REC.state = ''; REC.target = null; renderFab(); if (j.ok) { haptic('ok'); toast(j.message || (tgt ? '✅ Note ajoutée à la fiche ' + tgt.titre : '✅ Vocal envoyé : la fiche arrive dans Telegram')); setTimeout(function(){ load(true); }, tgt ? 1500 : 20000); } else toast('❌ ' + (j.error || 'Échec de l\'envoi')); })
+      .catch(function(){ REC.state = ''; REC.target = null; renderFab(); toast('❌ Pas de connexion : vocal non envoyé'); });
   };
   fr.readAsDataURL(res.blob);
 }
