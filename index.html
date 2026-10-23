@@ -29,7 +29,6 @@ h1{margin:4px 0 2px;font-size:32px}
 .tabs button{flex:1;height:44px;border:none;border-radius:12px;font-size:13px;font-weight:600;background:transparent;color:var(--mut);position:relative}
 .tabs button.on{background:#2A313C;color:var(--txt)}
 .tabs i{font-style:normal;font-size:11px;margin-left:3px;opacity:.8}
-.tabs button{font-size:12px;padding:0 2px;white-space:nowrap}.tabs i{margin-left:2px}
 .list{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px;text-align:left;width:100%}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -117,7 +116,6 @@ function tagPill(txt, c, bg){ return '<span class="pill" style="color:'+c+';back
 var TABS = [
   { id: 'devis', label: 'À faire' },
   { id: 'visites', label: 'Visites' },
-  { id: 'relances', label: 'Relances' },
   { id: 'rappeler', label: 'Rappeler' },
   { id: 'chantiers', label: 'Chantiers' }
 ];
@@ -152,7 +150,7 @@ function renderHome(){
   h += '<div class="stats">';
   h += '<button class="stat" data-tab="devis"><b>' + d.devis.length + '</b><span>à réaliser</span></button>';
   h += '<button class="stat" data-tab="devis"><b style="color:var(--red)">' + urg + '</b><span>urgents</span></button>';
-  h += '<button class="stat" data-tab="relances"><b style="color:var(--acc)">' + d.relances.length + '</b><span>relances</span></button>';
+  h += '<button class="stat" data-tab="rappeler"><b style="color:var(--acc)">' + (d.rappeler || []).length + '</b><span>à rappeler</span></button>';
   h += '</div><div class="tabs">';
   TABS.forEach(function(t){ h += '<button class="' + (S.tab === t.id ? 'on' : '') + '" data-tab="' + t.id + '">' + t.label + '<i>' + (d[t.id] || []).length + '</i></button>'; });
   h += '</div><div class="list">';
@@ -203,6 +201,7 @@ function renderFiche(){
     h += '<button class="act" data-rd="A" style="color:var(--grn)">Accepté</button><button class="act" data-rd="R" style="color:var(--red)">Refusé</button><button class="act" data-rd="W">Il réfléchit</button><button class="act" data-rd="C">À rappeler</button>';
     h += '</div></div>';
   }
+  if (k === 'rappeler' && it.motif === 'facture') h += '<div class="sec"><div class="lbl">PAIEMENT</div><button class="act" data-act="paye" style="color:var(--grn)">✅ Le client a payé</button></div>';
   if (it.url) h += '<div class="sec"><a class="act" style="display:flex;align-items:center;justify-content:center" href="' + esc(it.url) + '" target="_blank">Ouvrir la fiche Notion</a></div>';
   return h;
 }
@@ -283,6 +282,10 @@ document.addEventListener('click', function(e){
   }
   if (!S.sel) return;
   var it = S.sel.item;
+  if (ds.act === 'paye') {
+    confirmBox('Facture payée par ' + it.titre + ' ?', function(ok){ if (ok) run('paye', { pageId: it.id }, '✅ Payé : dossier clôturé', function(){ goBack(); }); });
+    return;
+  }
   if (ds.act === 'done') {
     confirmBox('Devis fait pour ' + it.titre + ' ?', function(ok){ if (ok) run('done', { pageId: it.id }, '✅ Devis fait', function(){ goBack(); }); });
     return;
