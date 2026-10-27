@@ -26,7 +26,7 @@ h1{margin:4px 0 2px;font-size:32px}
 .stat b{display:block;font-family:'Space Grotesk',sans-serif;font-size:28px}
 .stat span{font-size:12px;color:var(--mut)}
 .tabs{margin:16px 20px 0;display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px}
-.tabs button{flex:1;height:44px;border:none;border-radius:12px;font-size:13px;font-weight:600;background:transparent;color:var(--mut);position:relative}
+.tabs button{flex:1;min-width:0;height:44px;border:none;border-radius:12px;font-size:12px;font-weight:600;background:transparent;color:var(--mut);position:relative;padding:0 2px;white-space:nowrap}
 .tabs button.on{background:#2A313C;color:var(--txt)}
 .tabs i{font-style:normal;font-size:11px;margin-left:3px;opacity:.8}
 .list{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px}
@@ -117,8 +117,14 @@ var TABS = [
   { id: 'devis', label: 'À faire' },
   { id: 'visites', label: 'Visites' },
   { id: 'rappeler', label: 'Rappeler' },
-  { id: 'chantiers', label: 'Chantiers' }
+  { id: 'chantiers', label: 'Chantiers' },
+  { id: 'depannages', label: 'Dépann.' }
 ];
+var PHASE = {
+  afaire: { label: 'À faire', c: '#4DA3FF', bg: 'rgba(77,163,255,.14)', sec: 'À FAIRE' },
+  afacturer: { label: 'À facturer', c: '#FFA53D', bg: 'rgba(255,165,61,.14)', sec: 'FAITES · À FACTURER' },
+  aencaisser: { label: 'À encaisser', c: '#F5C518', bg: 'rgba(245,197,24,.14)', sec: 'FACTURÉES · À ENCAISSER' }
+};
 function metaFor(kind, it){
   var t = S.data.today;
   if (kind === 'devis') { if (!it.pour) return 'Sans date'; return (it.pour < t ? '⚠ ' : '') + 'Pour ' + frDate(it.pour); }
@@ -126,6 +132,11 @@ function metaFor(kind, it){
   if (kind === 'rappeler') return (it.motif === 'facture' ? 'Facturé il y a ' : 'Devis envoyé il y a ') + it.days + ' j';
   if (kind === 'relances') return 'Envoyé il y a ' + it.days + ' j';
   if (kind === 'chantiers') return it.depuis ? 'Accepté ' + frDate(it.depuis) : '';
+  if (kind === 'depannages') {
+    if (it.phase === 'afaire') return it.rdv ? frDate(it.rdv, it.rdv.length > 10 ? { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' } : undefined) : 'Date à fixer';
+    if (it.phase === 'afacturer') return it.materiel ? 'Matériel dicté' : 'Matériel non dicté';
+    return 'Facturé il y a ' + it.days + ' j' + (it.relPay ? ' · relance ' + it.relPay + '/3' : '');
+  }
   return '';
 }
 function firstPill(kind, it){
@@ -133,6 +144,7 @@ function firstPill(kind, it){
   if (kind === 'rappeler') return tagPill(it.motif === 'facture' ? 'Facture impayée' : 'Sans réponse', '#FF6B6B', 'rgba(255,107,107,.14)');
   if (kind === 'relances') return it.statut === 'En pause' ? tagPill('En pause', '#C9CFD9', '#1F242D') : pill(it.urgence);
   if (kind === 'chantiers') return tagPill('Accepté', '#3DD68C', 'rgba(61,214,140,.14)');
+  if (kind === 'depannages') { var ph = PHASE[it.phase] || PHASE.afaire; return tagPill('🔧 ' + ph.label, ph.c, ph.bg); }
   return pill(it.urgence);
 }
 
@@ -155,8 +167,10 @@ function renderHome(){
   TABS.forEach(function(t){ h += '<button class="' + (S.tab === t.id ? 'on' : '') + '" data-tab="' + t.id + '">' + t.label + '<i>' + (d[t.id] || []).length + '</i></button>'; });
   h += '</div><div class="list">';
   var items = d[S.tab] || [];
-  if (!items.length) h += '<div class="empty">' + { devis: 'Aucun devis à faire. 👍', visites: 'Aucune pré-visite en attente.', relances: 'Aucun devis en attente de réponse.', rappeler: 'Personne à rappeler. 👍', chantiers: 'Aucun chantier accepté à planifier.' }[S.tab] + '</div>';
+  if (!items.length) h += '<div class="empty">' + { devis: 'Aucun devis à faire. 👍', visites: 'Aucune pré-visite en attente.', relances: 'Aucun devis en attente de réponse.', rappeler: 'Personne à rappeler. 👍', chantiers: 'Aucun chantier accepté à planifier.', depannages: 'Aucun dépannage en cours. 👍' }[S.tab] + '</div>';
+  var lastPhase = '';
   items.forEach(function(it){
+    if (S.tab === 'depannages' && it.phase !== lastPhase) { lastPhase = it.phase; h += '<div class="lbl" style="margin-top:6px">' + esc((PHASE[it.phase] || PHASE.afaire).sec) + '</div>'; }
     h += '<button class="card" data-open="' + esc(it.id) + '">';
     h += '<div class="row">' + firstPill(S.tab, it) + '<span class="meta">' + esc(metaFor(S.tab, it)) + '</span></div>';
     h += '<div><div class="name">' + esc(it.titre) + '</div>';
@@ -173,7 +187,7 @@ function seg(items, cur, attr){
 }
 function renderFiche(){
   var k = S.sel.kind, it = S.sel.item, h = '';
-  var back = { devis: 'Devis à faire', visites: 'Pré-visite', relances: 'Relance', rappeler: 'À rappeler', chantiers: 'Chantier accepté' }[k];
+  var back = { devis: 'Devis à faire', visites: 'Pré-visite', relances: 'Relance', rappeler: 'À rappeler', chantiers: 'Chantier accepté', depannages: 'Dépannage' }[k];
   h += '<div class="top">' + '<button class="icon-btn" style="color:var(--txt)" data-act="back" aria-label="Retour">' + IC.back + '</button>' + '<span style="flex:1">' + back + '</span><button class="icon-btn" data-act="addfile" aria-label="Ajouter un fichier audio ou vidéo à cette fiche" style="width:auto;padding:0 14px;gap:6px;color:var(--txt);font-size:14px;font-weight:600"><span style="font-size:22px;line-height:1">+</span>Audio / vidéo</button></div>';
   h += '<div class="sec" style="gap:6px"><div style="display:flex;gap:8px;flex-wrap:wrap">' + firstPill(k, it) + tagPill(metaFor(k, it), '#C9CFD9', '#1F242D') + '</div>';
   h += '<div class="h" style="font-size:28px">' + esc(it.titre) + '</div>';
@@ -202,6 +216,17 @@ function renderFiche(){
     h += '</div></div>';
   }
   if (k === 'rappeler' && it.motif === 'facture') h += '<div class="sec"><div class="lbl">PAIEMENT</div><button class="act" data-act="paye" style="color:var(--grn)">✅ Le client a payé</button></div>';
+  if (k === 'depannages') {
+    var inf = '';
+    if (it.affaire) inf += '<div class="line"><span style="color:var(--mut);min-width:92px">Affaire</span><span>' + esc(it.affaire) + '</span></div>';
+    if (it.factNum !== '' && it.factNum != null) inf += '<div class="line"><span style="color:var(--mut);min-width:92px">Facture</span><span>n° ' + esc(it.factNum) + (it.dateF ? ' du ' + esc(frDate(it.dateF, { day:'numeric', month:'short' })) : '') + '</span></div>';
+    if (it.phase === 'aencaisser') inf += '<div class="line"><span style="color:var(--mut);min-width:92px">Relances</span><span>' + (it.relPay ? it.relPay + '/3 envoyée' + (it.relPay > 1 ? 's' : '') : 'Auto à J+7, J+14, J+21') + '</span></div>';
+    if (inf) h += '<div class="sec"><div class="box">' + inf + '</div></div>';
+    if (it.phase !== 'afaire') h += '<div class="sec"><div class="lbl">MATÉRIEL POSÉ</div><div class="notes">' + (it.materiel ? esc(it.materiel) : '<span style="color:var(--mut)">Pas encore dicté : appuie sur le micro pour l\'ajouter.</span>') + '</div></div>';
+    if (it.phase === 'afaire') h += '<div class="sec"><div class="type" style="color:var(--mut);font-size:13px">En sortant, appuie sur le bouton jaune et dis « intervention faite » avec le matériel posé : la fiche passe à facturer et le client part dans Esabora.</div></div>';
+    if (it.phase === 'afacturer') h += '<div class="sec"><div class="lbl">FACTURE</div><button class="act" data-act="facture" style="color:var(--org)">🧾 Facture envoyée</button><div class="type" style="color:var(--mut);font-size:13px">Normalement automatique quand Esabora envoie la facture par mail.</div></div>';
+    if (it.phase === 'aencaisser') h += '<div class="sec"><div class="lbl">PAIEMENT</div><button class="act" data-act="paye" style="color:var(--grn)">✅ Le client a payé</button></div>';
+  }
   if (it.url) h += '<div class="sec"><a class="act" style="display:flex;align-items:center;justify-content:center" href="' + esc(it.url) + '" target="_blank">Ouvrir la fiche Notion</a></div>';
   return h;
 }
@@ -215,7 +240,9 @@ function renderFab(){
   else if (S.sel) {
     // Fiche client : bouton micro pour dicter une note rattachée directement à ce client
     var mic = '<button class="big ghost" data-act="vocal" aria-label="Dicter une note pour ce client" style="width:56px;flex:none">' + IC.mic + '</button>';
-    if (S.sel.kind === 'devis') f.innerHTML = row(mic + '<button class="big" data-act="done"' + (S.busy ? ' disabled' : '') + '>' + (S.busy ? 'Envoi…' : 'Marquer le devis comme fait') + '</button>');
+    if (S.sel.kind === 'depannages' && S.sel.item.phase === 'afaire') f.innerHTML = '<button class="big" data-act="vocal">' + IC.mic + 'Dicter : intervention faite</button>';
+    else if (S.sel.kind === 'depannages' && S.sel.item.tel) f.innerHTML = row(mic + '<a class="big" href="tel:' + esc(S.sel.item.tel.replace(/\s/g, '')) + '">' + IC.tel + 'Appeler le client</a>');
+    else if (S.sel.kind === 'devis') f.innerHTML = row(mic + '<button class="big" data-act="done"' + (S.busy ? ' disabled' : '') + '>' + (S.busy ? 'Envoi…' : 'Marquer le devis comme fait') + '</button>');
     else if ((S.sel.kind === 'chantiers' || S.sel.kind === 'relances' || S.sel.kind === 'rappeler') && S.sel.item.tel) f.innerHTML = row(mic + '<a class="big" href="tel:' + esc(S.sel.item.tel.replace(/\s/g, '')) + '">' + IC.tel + (S.sel.kind === 'chantiers' ? 'Appeler pour caler la date' : 'Appeler le client') + '</a>');
     else f.innerHTML = '<button class="big" data-act="vocal">' + IC.mic + 'Dicter une note</button>';
   } else {
@@ -284,6 +311,10 @@ document.addEventListener('click', function(e){
   var it = S.sel.item;
   if (ds.act === 'paye') {
     confirmBox('Facture payée par ' + it.titre + ' ?', function(ok){ if (ok) run('paye', { pageId: it.id }, '✅ Payé : dossier clôturé', function(){ goBack(); }); });
+    return;
+  }
+  if (ds.act === 'facture') {
+    confirmBox('Facture envoyée à ' + it.titre + ' ?', function(ok){ if (ok) run('facture', { pageId: it.id }, '🧾 Facture envoyée', function(){ goBack(); }); });
     return;
   }
   if (ds.act === 'done') {
