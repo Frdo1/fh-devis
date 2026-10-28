@@ -206,7 +206,7 @@ function seg(items, cur, attr){
 function renderFiche(){
   var k = S.sel.kind, it = S.sel.item, h = '';
   var back = { devis: 'Devis à faire', visites: 'Pré-visite', relances: 'Relance', rappeler: 'À rappeler', chantiers: 'Chantier accepté', depannages: 'Dépannage' }[k];
-  h += '<div class="top">' + '<button class="icon-btn" style="color:var(--txt)" data-act="back" aria-label="Retour">' + IC.back + '</button>' + '<span style="flex:1">' + back + '</span><button class="icon-btn" data-act="camera" aria-label="Prendre une photo pour cette fiche" style="font-size:22px">📷</button><button class="icon-btn" data-act="addfile" aria-label="Ajouter un fichier audio ou vidéo à cette fiche" style="width:auto;padding:0 12px;gap:6px;color:var(--txt);font-size:14px;font-weight:600"><span style="font-size:22px;line-height:1">+</span>Audio</button></div>';
+  h += '<div class="top">' + '<button class="icon-btn" style="color:var(--txt)" data-act="back" aria-label="Retour">' + IC.back + '</button>' + '<span style="flex:1">' + back + '</span><button class="icon-btn" data-act="camera" aria-label="Prendre une photo pour cette fiche" style="font-size:22px">📷</button><button class="icon-btn" data-act="photos" aria-label="Ajouter des photos de la galerie à cette fiche" style="font-size:22px">🖼️</button><button class="icon-btn" data-act="addfile" aria-label="Ajouter un fichier audio ou vidéo à cette fiche" style="width:auto;padding:0 12px;gap:6px;color:var(--txt);font-size:14px;font-weight:600"><span style="font-size:22px;line-height:1">+</span>Audio</button></div>';
   h += '<div class="sec" style="gap:6px"><div style="display:flex;gap:8px;flex-wrap:wrap">' + firstPill(k, it) + tagPill(metaFor(k, it), '#C9CFD9', '#1F242D') + '</div>';
   h += '<div class="h" style="font-size:28px">' + esc(it.titre) + '</div>';
   if (it.projet) h += '<div class="type" style="font-size:15px">' + esc(it.projet) + '</div>';
@@ -506,6 +506,17 @@ function pickPhoto(cam){
   }
   inp.value = ''; inp.click();
 }
+// Après un envoi : barre « encore une photo » (Telegram Android ne rend qu'une photo par sélection)
+function moreBar(){
+  var old = document.getElementById('fhmore'); if (old) old.remove();
+  var b = document.createElement('div'); b.id = 'fhmore';
+  b.style.cssText = 'position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:60;display:flex;gap:8px;padding:8px;border-radius:16px;background:rgba(20,24,32,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 8px 24px rgba(0,0,0,.35)';
+  var mk = function(txt, cam){ var x = document.createElement('button'); x.textContent = txt; x.style.cssText = 'flex:1;min-height:44px;border:0;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;font:600 15px system-ui,sans-serif'; x.onclick = function(){ b.remove(); pickPhoto(cam); }; return x; };
+  var close = document.createElement('button'); close.textContent = '✕'; close.setAttribute('aria-label', 'Fermer'); close.style.cssText = 'width:44px;min-height:44px;border:0;border-radius:12px;background:transparent;color:#fff;font-size:18px'; close.onclick = function(){ b.remove(); };
+  b.appendChild(mk('🖼️ Encore une', false)); b.appendChild(mk('📷 Reprendre', true)); b.appendChild(close);
+  document.body.appendChild(b);
+  setTimeout(function(){ if (b.parentNode) b.remove(); }, 15000);
+}
 // Réduit la photo (1920 px max, JPEG) : envoi rapide même en 4G, toujours sous la limite de 19 Mo
 function shrink(file){
   return new Promise(function(res){
@@ -528,7 +539,7 @@ function sendPhotos(files){
   var n = files.length, ok = 0, i = 0;
   UP.busy = true;
   var next = function(){
-    if (i >= n) { UP.busy = false; if (ok) haptic('ok'); toast(ok === n ? '✅ ' + n + ' photo' + (n > 1 ? 's' : '') + ' ajoutée' + (n > 1 ? 's' : '') + ' à ' + it.titre : '⚠️ ' + ok + '/' + n + ' photos envoyées'); return; }
+    if (i >= n) { UP.busy = false; if (ok) haptic('ok'); toast(ok === n ? '✅ ' + n + ' photo' + (n > 1 ? 's' : '') + ' ajoutée' + (n > 1 ? 's' : '') + ' à ' + it.titre : '⚠️ ' + ok + '/' + n + ' photos envoyées'); moreBar(); return; }
     var f = files[i++]; toast('⏳ Photo ' + i + '/' + n + '…');
     shrink(f).then(function(p){
       var fd = new FormData();
