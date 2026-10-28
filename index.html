@@ -206,7 +206,7 @@ function seg(items, cur, attr){
 function renderFiche(){
   var k = S.sel.kind, it = S.sel.item, h = '';
   var back = { devis: 'Devis à faire', visites: 'Pré-visite', relances: 'Relance', rappeler: 'À rappeler', chantiers: 'Chantier accepté', depannages: 'Dépannage' }[k];
-  h += '<div class="top">' + '<button class="icon-btn" style="color:var(--txt)" data-act="back" aria-label="Retour">' + IC.back + '</button>' + '<span style="flex:1">' + back + '</span><button class="icon-btn" data-act="addfile" aria-label="Ajouter un fichier audio ou vidéo à cette fiche" style="width:auto;padding:0 14px;gap:6px;color:var(--txt);font-size:14px;font-weight:600"><span style="font-size:22px;line-height:1">+</span>Audio / vidéo</button></div>';
+  h += '<div class="top">' + '<button class="icon-btn" style="color:var(--txt)" data-act="back" aria-label="Retour">' + IC.back + '</button>' + '<span style="flex:1">' + back + '</span><button class="icon-btn" data-act="camera" aria-label="Prendre une photo pour cette fiche" style="font-size:22px">📷</button><button class="icon-btn" data-act="photos" aria-label="Ajouter des photos récentes à cette fiche" style="font-size:22px">🖼️</button><button class="icon-btn" data-act="addfile" aria-label="Ajouter un fichier audio ou vidéo à cette fiche" style="width:auto;padding:0 12px;gap:6px;color:var(--txt);font-size:14px;font-weight:600"><span style="font-size:22px;line-height:1">+</span>Audio</button></div>';
   h += '<div class="sec" style="gap:6px"><div style="display:flex;gap:8px;flex-wrap:wrap">' + firstPill(k, it) + tagPill(metaFor(k, it), '#C9CFD9', '#1F242D') + '</div>';
   h += '<div class="h" style="font-size:28px">' + esc(it.titre) + '</div>';
   if (it.projet) h += '<div class="type" style="font-size:15px">' + esc(it.projet) + '</div>';
@@ -353,6 +353,8 @@ document.addEventListener('click', function(e){
   }
   if (ds.act === 'reccancel') { if (Date.now() - REC.start < 800) return; REC.cancel = true; recRelease(); return; }
   if (ds.act === 'addfile') { pickFile(); return; }
+  if (ds.act === 'camera') { pickPhoto(true); return; }
+  if (ds.act === 'photos') { pickPhoto(false); return; }
   if (ds.act === 'bot') {
     if (tg && tg.initData) { try { tg.openTelegramLink('https://t.me/Fhdevis_bot'); } catch (e) {} setTimeout(function(){ try { tg.close(); } catch (e) {} }, 700); }
     else window.location.href = 'https://t.me/Fhdevis_bot';
@@ -488,6 +490,57 @@ function pickFile(){
     document.body.appendChild(inp);
   }
   inp.value = ''; inp.click();
+}
+// ---- Photos : 📷 ouvre directement l'appareil photo, 🖼️ ouvre la galerie (photos récentes en premier) ----
+function pickPhoto(cam){
+  if (UP.busy) { toast('Envoi déjà en cours…'); return; }
+  var id = cam ? 'fhcam' : 'fhgal', inp = document.getElementById(id);
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.id = id; inp.accept = 'image/*';
+    if (cam) inp.setAttribute('capture', 'environment'); else inp.multiple = true;
+    inp.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0';
+    var onPick = function(){ var fs = Array.prototype.slice.call(inp.files || []); inp.value = ''; if (fs.length) sendPhotos(fs); };
+    inp.addEventListener('change', onPick);
+    document.body.appendChild(inp);
+  }
+  inp.value = ''; inp.click();
+}
+// Réduit la photo (1920 px max, JPEG) : envoi rapide même en 4G, toujours sous la limite de 19 Mo
+function shrink(file){
+  return new Promise(function(res){
+    if (!/^image\/(jpe?g|png|webp)$/i.test(file.type || '')) { res(file); return; }
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function(){
+      var m = 1920, w = img.naturalWidth, h = img.naturalHeight, r = Math.min(1, m / Math.max(w, h));
+      var c = document.createElement('canvas'); c.width = Math.round(w * r); c.height = Math.round(h * r);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob(function(b){ res(b ? new File([b], (file.name || 'photo').replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file); }, 'image/jpeg', 0.85);
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); res(file); };
+    img.src = url;
+  });
+}
+function sendPhotos(files){
+  var it = S.sel ? S.sel.item : null;
+  if (!it) { toast('Ouvre d\'abord la fiche du client'); return; }
+  var pageId = S.sel.kind === 'relances' ? (it.oppId || '') : it.id;
+  var n = files.length, ok = 0, i = 0;
+  UP.busy = true;
+  var next = function(){
+    if (i >= n) { UP.busy = false; if (ok) haptic('ok'); toast(ok === n ? '✅ ' + n + ' photo' + (n > 1 ? 's' : '') + ' ajoutée' + (n > 1 ? 's' : '') + ' à ' + it.titre : '⚠️ ' + ok + '/' + n + ' photos envoyées'); return; }
+    var f = files[i++]; toast('⏳ Photo ' + i + '/' + n + '…');
+    shrink(f).then(function(p){
+      var fd = new FormData();
+      fd.append('initData', (tg && tg.initData) || ''); fd.append('kind', 'photo');
+      fd.append('pageId', pageId); fd.append('titre', it.titre);
+      fd.append('fichier', p, p.name || 'photo.jpg');
+      return fetch('https://n8n.srv1029075.hstgr.cloud/webhook/fh-devis-fichier', { method: 'POST', body: fd });
+    }).then(function(r){ return r.json().catch(function(){ return { ok: false }; }); })
+      .then(function(j){ if (j.ok) ok++; next(); })
+      .catch(function(){ next(); });
+  };
+  next();
 }
 function mediaInfo(file, kind){
   return new Promise(function(res){
