@@ -492,7 +492,41 @@ function pickFile(){
   inp.value = ''; inp.click();
 }
 // ---- Photos : 📷 ouvre directement l'appareil photo, 🖼️ ouvre la galerie (photos récentes en premier) ----
-function pickPhoto(cam){
+// 📷 : appareil photo intégré (Telegram Android ignore « capture » et ouvre un sélecteur de fichiers)
+function openCam(){
+  if (UP.busy) { toast('Envoi déjà en cours…'); return; }
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { pickPhoto(true, true); return; }
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false }).then(function(stream){
+    var shots = [];
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:80;background:#000;display:flex;flex-direction:column';
+    var v = document.createElement('video'); v.setAttribute('playsinline', ''); v.muted = true; v.autoplay = true; v.srcObject = stream;
+    v.style.cssText = 'flex:1;width:100%;min-height:0;object-fit:cover';
+    var bar = document.createElement('div');
+    bar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:18px 24px calc(24px + env(safe-area-inset-bottom));background:#000';
+    var btn = function(txt, css){ var b = document.createElement('button'); b.textContent = txt; b.style.cssText = 'border:0;color:#fff;font:600 16px system-ui,sans-serif;' + css; return b; };
+    var stop = function(){ stream.getTracks().forEach(function(t){ t.stop(); }); ov.remove(); };
+    var close = btn('✕', 'width:56px;height:56px;border-radius:28px;background:rgba(255,255,255,.15);font-size:22px');
+    var shoot = btn('', 'width:76px;height:76px;border-radius:38px;background:#fff;box-shadow:0 0 0 5px rgba(255,255,255,.35)');
+    shoot.setAttribute('aria-label', 'Prendre la photo');
+    var done = btn('', 'min-width:56px;height:56px;padding:0 16px;border-radius:28px;background:#2ea043;visibility:hidden');
+    var maj = function(){ done.textContent = '✓ ' + shots.length; done.style.visibility = shots.length ? 'visible' : 'hidden'; };
+    close.onclick = function(){ if (shots.length && !confirm('Abandonner les ' + shots.length + ' photo(s) prises ?')) return; stop(); };
+    shoot.onclick = function(){
+      if (!v.videoWidth) return;
+      var c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+      c.getContext('2d').drawImage(v, 0, 0);
+      v.style.opacity = '.3'; setTimeout(function(){ v.style.opacity = '1'; }, 120);
+      try { haptic('ok'); } catch (e) {}
+      c.toBlob(function(b){ if (b) { shots.push(new File([b], 'photo_' + Date.now() + '.jpg', { type: 'image/jpeg' })); maj(); } }, 'image/jpeg', 0.9);
+    };
+    done.onclick = function(){ var fs = shots.slice(); stop(); if (fs.length) sendPhotos(fs); };
+    bar.appendChild(close); bar.appendChild(shoot); bar.appendChild(done);
+    ov.appendChild(v); ov.appendChild(bar); document.body.appendChild(ov);
+  }).catch(function(){ toast('Caméra refusée : ouverture du sélecteur'); pickPhoto(true, true); });
+}
+function pickPhoto(cam, noLive){
+  if (cam && !noLive) { openCam(); return; }
   if (UP.busy) { toast('Envoi déjà en cours…'); return; }
   var id = cam ? 'fhcam' : 'fhgal', inp = document.getElementById(id);
   if (!inp) {
