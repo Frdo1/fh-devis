@@ -62,6 +62,23 @@ h1{margin:4px 0 2px;font-size:32px}
 .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:#2A313C;color:var(--txt);padding:12px 16px;border-radius:14px;font-size:14px;max-width:88%;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:9;transition:opacity .3s}
 .skel{height:130px;border-radius:22px;background:linear-gradient(90deg,#171B22 0%,#1d222b 50%,#171B22 100%);background-size:200% 100%;animation:sk 1.2s infinite}
 @keyframes sk{to{background-position:-200% 0}}
+/* notice */
+.nchips{padding:12px 20px 0;display:flex;flex-wrap:wrap;gap:8px}
+.nchips button{min-height:40px;padding:0 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:13px;font-weight:600}
+.nfam{padding:22px 20px 0;display:flex;flex-direction:column;gap:12px;scroll-margin-top:12px}
+.nfam .hd{display:flex;align-items:center;gap:12px}
+.nfam .ic{width:46px;height:46px;flex:none;border-radius:14px;display:grid;place-items:center;font-size:24px;background:var(--card);border:1.5px solid var(--fc)}
+.nfam .hd b{display:block;font-family:'Space Grotesk',sans-serif;font-size:21px}
+.nfam .hd span{font-size:13px;color:var(--mut)}
+.nrob{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.nrob .t{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;line-height:1.25}
+.nrob .tech{font-size:12px;color:var(--mut);margin-top:2px}
+.nwhen{align-self:flex-start;font-size:13px;font-weight:600;color:var(--fc);background:color-mix(in srgb,var(--fc) 14%,transparent);padding:4px 10px;border-radius:9px}
+.nsteps{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+.nsteps li{display:grid;grid-template-columns:24px 26px 1fr;gap:6px;align-items:start;font-size:14.5px;line-height:1.45;color:var(--sub)}
+.nsteps .n{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--fc);color:var(--fc);font-size:12px;font-weight:700;display:grid;place-items:center;margin-top:1px}
+.nsteps .e{font-size:18px;line-height:1.3}
+.nfriends{margin:16px 20px 0;padding:14px 16px;border-radius:18px;background:var(--card);border:1px solid var(--line);display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 14px;font-size:14px;color:var(--sub)}
 .err{margin:30px 20px;padding:18px;border-radius:18px;background:rgba(255,107,95,.1);border:1px solid rgba(255,107,95,.4);color:#FFB3AC;font-size:14px;line-height:1.5}
 </style>
 </head>
@@ -87,6 +104,7 @@ var IC = {
   cal: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
   back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
   refresh: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>',
+  gear: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   mic: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg>'
 };
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
@@ -152,7 +170,7 @@ function renderHome(){
   var d = S.data, h = '';
   var today = frDate(new Date().toISOString().slice(0,10), { weekday:'long', day:'numeric', month:'long' });
   h += '<header><div><div class="brand">FH ELEC</div><h1 class="h">Mes devis</h1><div class="date">' + esc(today.charAt(0).toUpperCase() + today.slice(1)) + '</div></div>';
-  h += '<button class="icon-btn" data-act="reload" aria-label="Actualiser">' + IC.refresh + '</button></header>';
+  h += '<div style="display:flex;gap:8px"><button class="icon-btn" data-act="notice" aria-label="Notice des robots">' + IC.gear + '</button><button class="icon-btn" data-act="reload" aria-label="Actualiser">' + IC.refresh + '</button></div></header>';
   if (S.error) {
     h += '<div class="err"><b>Impossible de charger tes devis.</b><br>' + esc(S.error) + (tg && tg.initData ? '' : '<br><br>Ouvre l\'appli depuis le bouton du bot Telegram.') + '</div>';
     return h;
@@ -231,9 +249,40 @@ function renderFiche(){
   return h;
 }
 
+// ---- Notice : chargée depuis n8n (jamais stockée dans ce fichier public) ----
+var NOTICE_API = 'https://n8n.srv1029075.hstgr.cloud/webhook/fh-devis-notice';
+function loadNotice(){
+  S.noticeErr = '';
+  fetch(NOTICE_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: (tg && tg.initData) || '' }) })
+    .then(function(r){ return r.json().catch(function(){ return { ok: false, error: 'Réponse illisible du serveur (' + r.status + ')' }; }); })
+    .then(function(j){ if (j.ok && j.familles) S.noticeData = j; else S.noticeErr = j.error || 'Accès refusé'; if (S.notice) render(); })
+    .catch(function(){ S.noticeErr = 'Pas de connexion au serveur n8n.'; if (S.notice) render(); });
+}
+function renderNotice(){
+  var h = '<div class="top"><button class="icon-btn" style="color:var(--txt)" data-act="back" aria-label="Retour">' + IC.back + '</button><span style="flex:1">Réglages</span></div>';
+  var d = S.noticeData;
+  if (S.noticeErr) return h + '<div class="err"><b>Impossible de charger la notice.</b><br>' + esc(S.noticeErr) + (tg && tg.initData ? '' : '<br><br>Ouvre l\'appli depuis le bouton du bot Telegram.') + '</div>';
+  if (!d) return h + '<div class="list" style="padding-top:18px"><div class="skel"></div><div class="skel"></div></div>';
+  h += '<div class="sec" style="gap:6px"><div class="brand">' + esc(d.surtitre || 'NOTICE') + '</div><div class="h" style="font-size:28px;line-height:1.1">' + esc(d.titre || '') + '</div>';
+  if (d.intro) h += '<div class="type" style="color:var(--mut);line-height:1.5">' + esc(d.intro) + '</div>';
+  h += '</div><div class="nchips">' + d.familles.map(function(f){ return '<button data-jump="' + esc(f.id) + '">' + esc(f.ic) + ' ' + esc(f.t) + '</button>'; }).join('') + '</div>';
+  if (d.amis && d.amis.length) h += '<div class="nfriends">' + d.amis.map(function(a){ return '<span>' + esc(a[0]) + ' <b>' + esc(a[1]) + '</b> : ' + esc(a[2]) + '</span>'; }).join('') + '</div>';
+  d.familles.forEach(function(f){
+    h += '<div class="nfam" id="' + esc(f.id) + '" style="--fc:' + esc(f.c) + '"><div class="hd"><span class="ic">' + esc(f.ic) + '</span><div><b>' + esc(f.t) + '</b><span>' + esc(f.s) + '</span></div></div>';
+    f.r.forEach(function(r){
+      h += '<div class="nrob"><div><div class="t">' + esc(r.t) + '</div><div class="tech">' + esc(r.tech) + '</div></div><span class="nwhen">▶️ ' + esc(r.w) + '</span><ol class="nsteps">';
+      r.st.forEach(function(x, i){ h += '<li><span class="n">' + (i + 1) + '</span><span class="e">' + esc(x[0]) + '</span><span>' + esc(x[1]) + '</span></li>'; });
+      h += '</ol></div>';
+    });
+    h += '</div>';
+  });
+  return h;
+}
+
 function renderFab(){
   var f = document.getElementById('fab');
   var row = function(x){ return '<div style="display:flex;gap:10px;width:100%;max-width:480px">' + x + '</div>'; };
+  if (S.notice && !REC.state) { f.innerHTML = ''; return; }
   if (REC.state === 'rec') f.innerHTML = row('<button class="big rec" data-act="vocal">' + IC.mic + '<span id="rectime">0:00</span> · ' + (REC.target ? 'Ajouter la note' : 'Envoyer') + '</button><button class="big ghost" data-act="reccancel" aria-label="Annuler le vocal" style="width:56px;flex:none;font-size:22px">✕</button>');
   else if (REC.state === 'wait') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>Micro…</button>';
   else if (REC.state === 'send') f.innerHTML = '<button class="big ghost" data-act="vocal" disabled>' + (REC.target ? 'Envoi de la note…' : 'Envoi du vocal…') + '</button>';
@@ -251,12 +300,12 @@ function renderFab(){
   }
 }
 function render(){
-  document.getElementById('app').innerHTML = S.sel ? renderFiche() : renderHome();
+  document.getElementById('app').innerHTML = S.notice ? renderNotice() : S.sel ? renderFiche() : renderHome();
   renderFab();
-  if (tg && tg.BackButton && tg.initData) { if (S.sel) tg.BackButton.show(); else tg.BackButton.hide(); }
+  if (tg && tg.BackButton && tg.initData) { if (S.sel || S.notice) tg.BackButton.show(); else tg.BackButton.hide(); }
 }
-function closeFiche(){ if (!S.sel) return; S.sel = null; render(); window.scrollTo(0, S.scroll || 0); }
-function goBack(){ if (!S.sel) return; if (history.state && history.state.fiche) history.back(); else closeFiche(); }
+function closeFiche(){ if (S.notice) { S.notice = false; render(); window.scrollTo(0, S.scroll || 0); return; } if (!S.sel) return; S.sel = null; render(); window.scrollTo(0, S.scroll || 0); }
+function goBack(){ if (!S.sel && !S.notice) return; if (history.state && history.state.fiche) history.back(); else closeFiche(); }
 window.addEventListener('popstate', function(){ closeFiche(); });
 
 function run(action, extra, okMsg, after){
@@ -295,6 +344,8 @@ document.addEventListener('click', function(e){
   if (ds.tab) { S.tab = ds.tab; haptic(); render(); return; }
   if (ds.open) { var f = findItem(S.tab, ds.open); if (f) { S.scroll = window.scrollY; S.sel = f; try { history.pushState({ fiche: 1 }, ''); } catch (e) {} haptic(); render(); window.scrollTo(0, 0); } return; }
   if (ds.act === 'reload') { haptic(); load(); return; }
+  if (ds.act === 'notice') { S.scroll = window.scrollY; S.notice = true; if (!S.noticeData) loadNotice(); try { history.pushState({ fiche: 1 }, ''); } catch (e) {} haptic(); render(); window.scrollTo(0, 0); return; }
+  if (ds.jump) { var el = document.getElementById(ds.jump); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); haptic(); return; }
   if (ds.act === 'back') { goBack(); return; }
   if (ds.act === 'vocal') {
     if (REC.state === 'rec') { if (Date.now() - REC.start > 800) recRelease(); } else if (!REC.state) recStart();
