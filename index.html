@@ -79,6 +79,19 @@ h1{margin:4px 0 2px;font-size:32px}
 .nsteps .n{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--fc);color:var(--fc);font-size:12px;font-weight:700;display:grid;place-items:center;margin-top:1px}
 .nsteps .e{font-size:18px;line-height:1.3}
 .nfriends{margin:16px 20px 0;padding:14px 16px;border-radius:18px;background:var(--card);border:1px solid var(--line);display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 14px;font-size:14px;color:var(--sub)}
+/* jauge rentabilité */
+.jg{margin:16px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:14px 14px 12px}
+.jg .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.jg .yrs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.jg .yrs::-webkit-scrollbar{display:none}
+.jg .yrs button{flex:none;height:30px;padding:0 10px;border-radius:9px;border:1px solid var(--btnline);background:var(--btn);font-size:12px;font-weight:600;color:var(--mut)}
+.jg .yrs button.on{color:var(--acc);border-color:var(--acc);background:rgba(245,197,24,.12)}
+.jg .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.jg .g{text-align:center}
+.jg .g svg{width:100%;max-width:170px;display:block;margin:0 auto}
+.jg .g b{display:block;font-size:12px;color:var(--mut);font-weight:600;letter-spacing:.06em;margin-top:2px}
+.jg .g span{display:block;font-size:12px;color:var(--sub);margin-top:2px}
+.jg .note{font-size:11.5px;color:var(--mut);margin-top:8px;line-height:1.4}
 .err{margin:30px 20px;padding:18px;border-radius:18px;background:rgba(255,107,95,.1);border:1px solid rgba(255,107,95,.4);color:#FFB3AC;font-size:14px;line-height:1.5}
 </style>
 </head>
@@ -122,9 +135,17 @@ function load(silent){
   if (!silent){ S.data = null; S.error = ''; render(); }
   return api('data').then(function(j){
     if (!j.ok) { S.error = j.error || 'Accès refusé'; S.data = null; }
-    else { S.data = j; S.error = ''; if (S.sel){ S.sel = findItem(S.sel.kind, S.sel.item.id) ; } }
+    else { S.data = j; S.error = ''; if (S.stats && !j.stats) j.stats = S.stats; if (S.sel){ S.sel = findItem(S.sel.kind, S.sel.item.id) ; } loadStats(); }
     render();
   }).catch(function(){ S.error = 'Pas de connexion au serveur n8n.'; render(); });
+}
+// Stats de la jauge : workflow n8n séparé (cache recalculé toutes les 30 min : export Esabora + base Notion Devis)
+var STATS_API = 'https://n8n.srv1029075.hstgr.cloud/webhook/fh-devis-stats';
+function loadStats(){
+  fetch(STATS_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: (tg && tg.initData) || '' }) })
+    .then(function(r){ return r.json(); })
+    .then(function(j){ if (j && j.ok && j.annees) { S.stats = { annees: j.annees, maj: j.maj }; if (S.data) { S.data.stats = S.stats; if (!S.sel && !S.notice) { var sy = window.scrollY; render(); window.scrollTo(0, sy); } } } })
+    .catch(function(){});
 }
 function findItem(kind, id){ var arr = (S.data && S.data[kind]) || []; for (var i=0;i<arr.length;i++) if (arr[i].id === id) return { kind: kind, item: arr[i] }; return null; }
 
@@ -181,7 +202,7 @@ function renderHome(){
   h += '<button class="stat" data-tab="devis"><b>' + d.devis.length + '</b><span>à réaliser</span></button>';
   h += '<button class="stat" data-tab="devis"><b style="color:var(--red)">' + urg + '</b><span>urgents</span></button>';
   h += '<button class="stat" data-tab="rappeler"><b style="color:var(--acc)">' + (d.rappeler || []).length + '</b><span>à rappeler</span></button>';
-  h += '</div><div class="tabs">';
+  h += '</div>' + renderJauge(d.stats) + '<div class="tabs">';
   TABS.forEach(function(t){ h += '<button class="' + (S.tab === t.id ? 'on' : '') + '" data-tab="' + t.id + '">' + t.label + '<i>' + (d[t.id] || []).length + '</i></button>'; });
   h += '</div><div class="list">';
   var items = d[S.tab] || [];
@@ -198,6 +219,40 @@ function renderHome(){
   });
   h += '</div>';
   return h;
+}
+
+// ---- Jauge rentabilité : devis faits → devis acceptés (en nombre et en € HT) ----
+// d.stats = { annees: { '2026': { faits, acceptes, ht, htAcc }, ... }, maj: 'AAAA-MM-JJ' } (calculé par n8n)
+function arcJauge(p){
+  var cx = 80, cy = 80, r = 62, has = p != null && !isNaN(p), v = has ? Math.max(0, Math.min(100, p)) : 0;
+  var c = !has ? 'var(--mut)' : v >= 35 ? 'var(--grn)' : v >= 20 ? 'var(--org)' : 'var(--red)';
+  var t = Math.PI * (1 - v / 100), ex = (cx + r * Math.cos(t)).toFixed(1), ey = (cy - r * Math.sin(t)).toFixed(1);
+  var s = '<svg viewBox="0 0 160 92" aria-hidden="true"><path d="M18 80 A62 62 0 0 1 142 80" fill="none" stroke="#2A313C" stroke-width="13" stroke-linecap="round"/>';
+  if (has && v > 0.5) s += '<path d="M18 80 A62 62 0 0 1 ' + ex + ' ' + ey + '" fill="none" stroke="' + c + '" stroke-width="13" stroke-linecap="round"/>';
+  s += '<text x="80" y="76" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="27" font-weight="700" fill="' + (has ? 'var(--txt)' : 'var(--mut)') + '">' + (has ? (Math.round(v * 10) / 10).toString().replace('.', ',') + ' %' : '—') + '</text></svg>';
+  return s;
+}
+function nf(n){ return Math.round(n || 0).toLocaleString('fr-FR'); }
+function eur(n){ n = n || 0; return n >= 1e6 ? (Math.round(n / 1e5) / 10).toString().replace('.', ',') + ' M€' : n >= 1e4 ? nf(n / 1000) + ' k€' : nf(n) + ' €'; }
+function renderJauge(st){
+  if (!st || !st.annees) return '';
+  var ks = Object.keys(st.annees).sort().reverse();
+  if (!ks.length) return '';
+  if (!S.jy || (S.jy !== 'tout' && !st.annees[S.jy])) S.jy = ks[0];
+  var a;
+  if (S.jy === 'tout') { a = { faits: 0, acceptes: 0, ht: 0, htAcc: 0, sansHt: 0 }; ks.forEach(function(k){ var y = st.annees[k]; ['faits', 'acceptes', 'ht', 'htAcc', 'sansHt'].forEach(function(f){ a[f] += y[f] || 0; }); }); }
+  else a = st.annees[S.jy];
+  var pN = a.faits ? a.acceptes / a.faits * 100 : null;
+  var pE = a.ht ? a.htAcc / a.ht * 100 : null;
+  var h = '<div class="jg"><div class="hd"><div class="lbl">TRANSFORMATION DES DEVIS</div><div class="yrs">';
+  ks.forEach(function(k){ h += '<button data-jy="' + k + '" class="' + (S.jy === k ? 'on' : '') + '">' + k + '</button>'; });
+  h += '<button data-jy="tout" class="' + (S.jy === 'tout' ? 'on' : '') + '">Tout</button></div></div>';
+  h += '<div class="two"><div class="g">' + arcJauge(pN) + '<b>EN NOMBRE</b><span>' + nf(a.acceptes) + ' acceptés / ' + nf(a.faits) + ' faits</span></div>';
+  h += '<div class="g">' + arcJauge(pE) + '<b>EN MONTANT HT</b><span>' + (a.ht ? eur(a.htAcc) + ' / ' + eur(a.ht) : 'Montants non remontés') + '</span></div></div>';
+  var note = 'Accepté = accepté, facturé ou partiellement facturé dans Esabora.';
+  if (a.sansHt) note += ' ' + nf(a.sansHt) + ' devis sans montant.';
+  if (st.maj) note += ' Mis à jour le ' + frDate(st.maj, { day: 'numeric', month: 'short' }) + '.';
+  return h + '<div class="note">' + esc(note) + '</div></div>';
 }
 
 function seg(items, cur, attr){
@@ -342,6 +397,7 @@ document.addEventListener('click', function(e){
   }
   var ds = b.dataset;
   if (ds.tab) { S.tab = ds.tab; haptic(); render(); return; }
+  if (ds.jy) { S.jy = ds.jy; haptic(); var sy = window.scrollY; render(); window.scrollTo(0, sy); return; }
   if (ds.open) { var f = findItem(S.tab, ds.open); if (f) { S.scroll = window.scrollY; S.sel = f; try { history.pushState({ fiche: 1 }, ''); } catch (e) {} haptic(); render(); window.scrollTo(0, 0); } return; }
   if (ds.act === 'reload') { haptic(); load(); return; }
   if (ds.act === 'notice') { S.scroll = window.scrollY; S.notice = true; if (!S.noticeData) loadNotice(); try { history.pushState({ fiche: 1 }, ''); } catch (e) {} haptic(); render(); window.scrollTo(0, 0); return; }
