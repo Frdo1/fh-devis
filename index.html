@@ -25,10 +25,12 @@ h1{margin:4px 0 2px;font-size:32px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 12px;text-align:left}
 .stat b{display:block;font-family:'Space Grotesk',sans-serif;font-size:28px}
 .stat span{font-size:12px;color:var(--mut)}
-.tabs{margin:16px 20px 0;display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px}
-.tabs button{flex:1;min-width:0;height:44px;border:none;border-radius:12px;font-size:12px;font-weight:600;background:transparent;color:var(--mut);position:relative;padding:0 2px;white-space:nowrap}
+.tabs{margin:16px 20px 0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px}
+.tabs button{min-width:0;height:58px;border:none;border-radius:12px;font-size:11px;font-weight:600;background:transparent;color:var(--mut);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 2px;white-space:nowrap}
 .tabs button.on{background:#2A313C;color:var(--txt)}
-.tabs i{font-style:normal;font-size:11px;margin-left:3px;opacity:.8}
+.tabs .e{font-size:19px;line-height:1;position:relative}
+.tabs i{position:absolute;top:-7px;right:-15px;font-style:normal;font-size:10px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#262C36;color:var(--sub);display:inline-flex;align-items:center;justify-content:center}
+.tabs button.on i{background:var(--acc);color:#111318}
 .list{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px;text-align:left;width:100%}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -158,11 +160,11 @@ function pill(u){ var p = PRIO[u || ''] || PRIO['']; return '<span class="pill" 
 function tagPill(txt, c, bg){ return '<span class="pill" style="color:'+c+';background:'+bg+'">'+esc(txt)+'</span>'; }
 
 var TABS = [
-  { id: 'devis', label: 'À faire' },
-  { id: 'visites', label: 'Visites' },
-  { id: 'rappeler', label: 'Rappeler' },
-  { id: 'chantiers', label: 'Chantiers' },
-  { id: 'depannages', label: 'Dépann.' }
+  { id: 'devis', label: 'À faire', ic: '📝' },
+  { id: 'visites', label: 'Visites', ic: '🏠' },
+  { id: 'rappeler', label: 'Rappeler', ic: '📞' },
+  { id: 'chantiers', label: 'Chantiers', ic: '🔨' },
+  { id: 'depannages', label: 'Dépann.', ic: '🔧' }
 ];
 var PHASE = {
   afaire: { label: 'À faire', c: '#4DA3FF', bg: 'rgba(77,163,255,.14)', sec: 'À FAIRE' },
@@ -208,7 +210,7 @@ function renderHome(){
   h += '<button class="stat" data-tab="devis"><b style="color:var(--red)">' + urg + '</b><span>urgents</span></button>';
   h += '<button class="stat" data-tab="rappeler"><b style="color:var(--acc)">' + (d.rappeler || []).length + '</b><span>à rappeler</span></button>';
   h += '</div>' + renderRoi(d.stats && d.stats.roi) + '<div class="tabs">';
-  TABS.forEach(function(t){ h += '<button class="' + (S.tab === t.id ? 'on' : '') + '" data-tab="' + t.id + '">' + t.label + '<i>' + (d[t.id] || []).length + '</i></button>'; });
+  TABS.forEach(function(t){ h += '<button class="' + (S.tab === t.id ? 'on' : '') + '" data-tab="' + t.id + '" aria-label="' + t.label + ' (' + (d[t.id] || []).length + ')"><span class="e" aria-hidden="true">' + t.ic + '<i>' + (d[t.id] || []).length + '</i></span>' + t.label + '</button>'; });
   h += '</div><div class="list">';
   var items = d[S.tab] || [];
   if (!items.length) h += '<div class="empty">' + { devis: 'Aucun devis à faire. 👍', visites: 'Aucune pré-visite en attente.', relances: 'Aucun devis en attente de réponse.', rappeler: 'Personne à rappeler. 👍', chantiers: 'Aucun chantier accepté à planifier.', depannages: 'Aucun dépannage en cours. 👍' }[S.tab] + '</div>';
