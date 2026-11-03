@@ -158,6 +158,7 @@ function load(silent){
   }).catch(function(){ S.error = 'Pas de connexion au serveur n8n.'; render(); });
 }
 // ROI prospects : workflow n8n « Jauge devis (Mini App) » (cache recalculé toutes les 30 min : relevé Esabora + Notion)
+var PREDEVIS_URL = 'https://claude.ai/artifact/A7pVeM2enmyDjmWe7pdd5b';
 var STATS_API = 'https://n8n.srv1029075.hstgr.cloud/webhook/fh-devis-stats';
 function loadStats(){
   fetch(STATS_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: (tg && tg.initData) || '' }) })
@@ -340,6 +341,9 @@ function renderFiche(){
     if (it.phase === 'afacturer') h += '<div class="sec"><div class="lbl">FACTURE</div><button class="act" data-act="facture" style="color:var(--org)">🧾 Facture envoyée</button><div class="type" style="color:var(--mut);font-size:13px">Normalement automatique quand Esabora envoie la facture par mail.</div></div>';
     if (it.phase === 'aencaisser') h += '<div class="sec"><div class="lbl">PAIEMENT</div><button class="act" data-act="paye" style="color:var(--grn)">✅ Le client a payé</button></div>';
   }
+  // Fiche pré-devis (appli Claude) : même client, fiche créée automatiquement selon le projet (clim, VMC, borne, portail, électricité)
+  var nid = (String(it.url || it.id || '').replace(/-/g, '').match(/[0-9a-f]{32}/) || [])[0];
+  if ((k === 'visites' || k === 'devis') && nid) h += '<div class="sec"><a class="act" style="display:flex;align-items:center;justify-content:center;color:var(--acc)" href="' + PREDEVIS_URL + '#n' + nid + '" target="_blank">📋 Fiche pré-devis</a></div>';
   if (it.url) h += '<div class="sec"><a class="act" style="display:flex;align-items:center;justify-content:center" href="' + esc(it.url) + '" target="_blank">Ouvrir la fiche Notion</a></div>';
   return h;
 }
