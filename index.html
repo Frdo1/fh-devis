@@ -216,12 +216,7 @@ function renderHome(){
     return h;
   }
   if (!d) { h += '<div class="list" style="padding-top:18px"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>'; return h; }
-  var urg = d.devis.filter(function(x){ return x.urgence === 'U'; }).length;
-  h += '<div class="stats">';
-  h += '<button class="stat" data-tab="devis"><b>' + d.devis.length + '</b><span>à réaliser</span></button>';
-  h += '<button class="stat" data-tab="devis"><b style="color:var(--red)">' + urg + '</b><span>urgents</span></button>';
-  h += '<button class="stat" data-tab="rappeler"><b style="color:var(--acc)">' + (d.rappeler || []).length + '</b><span>à rappeler</span></button>';
-  h += '</div><div class="tabs">';
+  h += '<div class="tabs">';
   TABS.forEach(function(t){ h += '<button class="' + (S.tab === t.id ? 'on' : '') + '" data-tab="' + t.id + '" aria-label="' + t.label + ' (' + (d[t.id] || []).length + ')"><span class="e" aria-hidden="true">' + t.ic + '<i>' + (d[t.id] || []).length + '</i></span>' + t.label + '</button>'; });
   var roi = d.stats && d.stats.roi;
   h += '</div>' + roiBar(roi);
